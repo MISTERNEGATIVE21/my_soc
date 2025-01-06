@@ -124,10 +124,10 @@ module DCache #(
                     // Read operation
                     rdata <= data_array[index][hit_way][offset/4];
                 end
-                ready <= 1;
+            ready <= 1; // Data is ready if hit
             end else begin
                 // Cache miss
-                ready <= 0;
+            ready <= 0; // Data is not ready if miss
                 if (r_w) begin
                     // Write miss: handle accordingly based on policy
                     handle_write_miss(addr, wdata);

@@ -22,4 +22,4 @@ Feel free to try it out, and let me know how I can help you with your my_soc pro
 
 
 example:
-"Hi, I need help with my project. Here is the repository URL: https://github.com/hankonly/my_soc. Can you check the core/-cache.v file and help me with it?"
+"Hi, I need help with my project. Here is the repository URL: https://github.com/hankonly/my_soc. Can you check the core/i-cache.v file and help me with it?"

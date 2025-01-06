@@ -20,7 +20,7 @@ module PipelineRV32ICore_AHB #(
     output reg HWRITE,
     input [31:0] HRDATA,
     input HREADY,
-    input HRESP
+    input HRESP,
     // JTAG Interface
     input wire TCK,
     input wire TMS,
@@ -87,11 +87,8 @@ module PipelineRV32ICore_AHB #(
     wire jtag_enable;
     wire jtag_step;
     wire jtag_run;
-    wire cpu_stall;
 
      // Internal signals for CPU control
-    reg [31:0] pc; // Program counter
-    reg [31:0] instruction; // Current instruction
     reg [31:0] regfile [0:31]; // Register file
     reg fetch_enable, decode_enable, execute_enable; // Pipeline stage enables
     reg cpu_stall; // CPU stall signal
@@ -118,7 +115,7 @@ module PipelineRV32ICore_AHB #(
         .HRESP(HRESP)
     );
 
-    // Instantiate D-Cache with configurable write policy
+    // Instantiate D-Cache
     DCache #(
         .CACHE_SIZE(DCACHE_SIZE),
         .LINE_SIZE(DCACHE_LINE_SIZE),
@@ -136,136 +133,95 @@ module PipelineRV32ICore_AHB #(
         .hit(d_cache_hit)
     );
 
-    // Initial PC
-    initial begin
-        PC = 0;
-    end
+    // Instantiate pipeline stages
+    IF_stage if_stage (
+        .clk(clk),
+        .reset(reset),
+        .fetch_enable(fetch_enable),
+        .PC(PC),
+        .HRDATA(HRDATA),
+        .i_cache_ready(i_cache_ready),
+        .i_cache_hit(i_cache_hit),
+        .HREADY(HREADY),
+        .IF_ID_PC(IF_ID_PC),
+        .IF_ID_Instruction(IF_ID_Instruction),
+        .HADDR(HADDR),
+        .HTRANS(HTRANS),
+        .HWRITE(HWRITE)
+    );
 
-    // Instruction Fetch (IF) stage
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            pc <= 32'b0;
-            fetch_enable <= 1'b0;
-        end else if (!cpu_stall) begin
-            if (fetch_enable) begin
-                if (i_cache_ready && i_cache_hit) begin
-                    IF_ID_PC <= PC;
-                    IF_ID_Instruction <= i_cache_rdata;
-                    PC <= PC + 4;
-                end else if (HREADY) begin
-                    IF_ID_PC <= PC;
-                    IF_ID_Instruction <= HRDATA;
-                    HADDR <= PC;
-                    HTRANS <= 2'b10; // NONSEQ
-                    HWRITE <= 0;     // Read operation
-                    PC <= PC + 4;
-                end               
-            end
-            fetch_enable <= 1'b1;
-        end else begin
-            fetch_enable <= 1'b0;
-        end
-    end
+    ID_stage id_stage (
+        .clk(clk),
+        .reset(reset),
+        .decode_enable(decode_enable),
+        .fetch_enable(fetch_enable),
+        .IF_ID_PC(IF_ID_PC),
+        .IF_ID_Instruction(IF_ID_Instruction),
+        .ReadData1(ReadData1),
+        .ReadData2(ReadData2),
+        .Immediate(Immediate),
+        .ID_EX_PC(ID_EX_PC),
+        .ID_EX_ReadData1(ID_EX_ReadData1),
+        .ID_EX_ReadData2(ID_EX_ReadData2),
+        .ID_EX_Immediate(ID_EX_Immediate),
+        .ID_EX_Rs1(ID_EX_Rs1),
+        .ID_EX_Rs2(ID_EX_Rs2),
+        .ID_EX_Rd(ID_EX_Rd),
+        .ID_EX_Funct7(ID_EX_Funct7),
+        .ID_EX_Funct3(ID_EX_Funct3)
+    );
 
-    // Instruction Decode (ID) stage
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            decode_enable <= 1'b0;
-            ID_EX_PC <= 0;
-            ID_EX_ReadData1 <= 0;
-            ID_EX_ReadData2 <= 0;
-            ID_EX_Immediate <= 0;
-            ID_EX_Rs1 <= 0;
-            ID_EX_Rs2 <= 0;
-            ID_EX_Rd <= 0;
-            ID_EX_Funct7 <= 0;
-            ID_EX_Funct3 <= 0;           
-        end else if (!cpu_stall) begin
-            if (decode_enable) begin
-                // Decode instruction
-                // (Implementation depends on the instruction set)
-                ID_EX_PC <= IF_ID_PC;
-                ID_EX_ReadData1 <= ReadData1;
-                ID_EX_ReadData2 <= ReadData2;
-                ID_EX_Immediate <= Immediate;
-                ID_EX_Rs1 <= IF_ID_Instruction[19:15];
-                ID_EX_Rs2 <= IF_ID_Instruction[24:20];
-                ID_EX_Rd <= IF_ID_Instruction[11:7];
-                ID_EX_Funct7 <= IF_ID_Instruction[31:25];
-                ID_EX_Funct3 <= IF_ID_Instruction[14:12];
-            end
-            decode_enable <= fetch_enable;
-        end else begin
-            decode_enable <= 1'b0;
-        end
-    end
+    EX_stage ex_stage (
+        .clk(clk),
+        .reset(reset),
+        .execute_enable(execute_enable),
+        .decode_enable(decode_enable),
+        .ID_EX_ReadData1(ID_EX_ReadData1),
+        .ID_EX_ReadData2(ID_EX_ReadData2),
+        .ID_EX_Immediate(ID_EX_Immediate),
+        .ID_EX_Rd(ID_EX_Rd),
+        .ID_EX_Funct7(ID_EX_Funct7),
+        .ID_EX_Funct3(ID_EX_Funct3),
+        .ALUControl(ALUControl),
+        .EX_MEM_ALUResult(EX_MEM_ALUResult),
+        .EX_MEM_WriteData(EX_MEM_WriteData),
+        .EX_MEM_Rd(EX_MEM_Rd),
+        .EX_MEM_RegWrite(EX_MEM_RegWrite)
+    );
 
+    MEM_stage mem_stage (
+        .clk(clk),
+        .reset(reset),
+        .EX_MEM_ALUResult(EX_MEM_ALUResult),
+        .EX_MEM_WriteData(EX_MEM_WriteData),
+        .EX_MEM_Rd(EX_MEM_Rd),
+        .EX_MEM_RegWrite(EX_MEM_RegWrite),
+        .MemRead(MemRead),
+        .MemWrite(MemWrite),
+        .HRDATA(HRDATA),
+        .HREADY(HREADY),
+        .d_cache_ready(d_cache_ready),
+        .d_cache_hit(d_cache_hit),
+        .d_cache_rdata(d_cache_rdata),
+        .MEM_WB_ReadData(MEM_WB_ReadData),
+        .MEM_WB_Rd(MEM_WB_Rd),
+        .MEM_WB_RegWrite(MEM_WB_RegWrite),
+        .HADDR(HADDR),
+        .HTRANS(HTRANS),
+        .HWRITE(HWRITE),
+        .HWDATA(HWDATA)
+    );
 
-    // Execute (EX) stage
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            execute_enable <= 1'b0;
-
-            EX_MEM_ALUResult <= 0;
-            EX_MEM_WriteData <= 0;
-            EX_MEM_Rd <= 0;
-            EX_MEM_RegWrite <= 0;
-        end else if (!cpu_stall) begin
-            if (execute_enable) begin
-                // Execute instruction
-                // (Implementation depends on the instruction set)
-                EX_MEM_ALUResult <= ALUResult;
-                EX_MEM_WriteData <= ID_EX_ReadData2;
-                EX_MEM_Rd <= ID_EX_Rd;
-                EX_MEM_RegWrite <= RegWrite;
-            end
-            execute_enable <= decode_enable;
-        end else begin
-            execute_enable <= 1'b0;
-        end
-    end
-
-    // Memory Access (MEM) stage
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            MEM_WB_ReadData <= 0;
-            MEM_WB_Rd <= 0;
-            MEM_WB_RegWrite <= 0;
-        end else begin
-            if (MemRead) begin
-                if (d_cache_ready && d_cache_hit) begin
-                    MEM_WB_ReadData <= d_cache_rdata;
-                end else if (HREADY) begin
-                    HADDR <= EX_MEM_ALUResult;
-                    HTRANS <= 2'b10; // NONSEQ
-                    HWRITE <= 0;     // Read operation
-                    MEM_WB_ReadData <= HRDATA;
-                end
-            end else if (MemWrite) begin
-                if (d_cache_ready && d_cache_hit) begin
-                    // Cache write handled in D-Cache
-                end else if (HREADY) begin
-                    HADDR <= EX_MEM_ALUResult;
-                    HTRANS <= 2'b10; // NONSEQ
-                    HWRITE <= 1;     // Write operation
-                    HWDATA <= EX_MEM_WriteData;
-                end
-            end
-            MEM_WB_Rd <= EX_MEM_Rd;
-            MEM_WB_RegWrite <= EX_MEM_RegWrite;
-        end
-    end
-
-    // Write Back (WB) stage
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            // Reset logic
-        end else begin
-            if (MEM_WB_RegWrite) begin
-                regfile[MEM_WB_Rd] <= (MemtoReg) ? MEM_WB_ReadData : EX_MEM_ALUResult;
-            end
-        end
-    end
+    WB_stage wb_stage (
+        .clk(clk),
+        .reset(reset),
+        .MEM_WB_RegWrite(MEM_WB_RegWrite),
+        .MEM_WB_ReadData(MEM_WB_ReadData),
+        .MEM_WB_Rd(MEM_WB_Rd),
+        .EX_MEM_ALUResult(EX_MEM_ALUResult),
+        .MemtoReg(MemtoReg),
+        .regfile(regfile)
+    );
 
     // Control Unit
     ControlUnit cu (
@@ -284,15 +240,6 @@ module PipelineRV32ICore_AHB #(
         .Funct7(ID_EX_Funct7),
         .Funct3(ID_EX_Funct3),
         .ALUControl(ALUControl)
-    );
-
-    // ALU
-    ALU alu (
-        .A(ID_EX_ReadData1),
-        .B((ALUSrc) ? ID_EX_Immediate : ID_EX_ReadData2),
-        .ALUControl(ALUControl),
-        .Result(ALUResult),
-        .Zero(Zero)
     );
 
     // Register File
@@ -342,6 +289,12 @@ module PipelineRV32ICore_AHB #(
         .halt(cpu_halt)
     );
 
+
+    // Initial PC
+    initial begin
+        PC = 0;
+    end
+
     // CPU halt control logic
     always @(posedge clk or posedge reset) begin
         if (reset) begin
@@ -352,7 +305,7 @@ module PipelineRV32ICore_AHB #(
     end
 
     // AHB Master Interface (example)
-    assign HADDR = pc;
+    assign HADDR = PC;
     assign HBURST = 3'b000;
     assign HMASTLOCK = 1'b0;
     assign HPROT = 4'b0011;
