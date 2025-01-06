@@ -26,11 +26,18 @@ Initialization: The cache is initialized to mark all lines as invalid.
 
 Cache Miss Handling: On a cache miss, the cache fetches the data from the AHB bus, updates the cache, and then sets the data to be read.
 
+In the context of the I-Cache design, the CPU typically waits for the ready signal to indicate whether an instruction is available for processing. 
+When there is an I-Cache miss, the ready signal will not be asserted until the requested instruction is fetched from the AHB bus and the cache is updated.
+Here is a brief overview of the relevant signals and their roles:
+valid: This signal indicates that the address provided by the CPU is valid and a cache lookup should be performed.
+hit: This signal indicates whether the requested instruction is found in the cache.
+ready: This signal indicates that the data is ready to be used by the CPU. If there is an I-Cache miss, this signal will be deasserted until the instruction is fetched from the AHB bus.
+
 ---------------------------------------------------------------------------------------------------------------
 */
 module ICache #(
     parameter CACHE_SIZE = 1024,   // Total cache size in bytes
-    parameter LINE_SIZE = 32,      // Line size in bytes
+    parameter LINE_SIZE = 64,      // Line size in bytes
     parameter WAYS = 1             // Number of ways (associativity)
 )(
     input wire clk,
@@ -42,6 +49,10 @@ module ICache #(
     output reg hit,
     // AHB interface signals
     output reg [31:0] HADDR,
+    output reg [2:0] HBURST,
+    output reg HMASTLOCK,
+    output reg [3:0] HPROT,
+    output reg [2:0] HSIZE,
     output reg [1:0] HTRANS,
     output reg HWRITE,
     output reg [31:0] HWDATA,
@@ -57,7 +68,7 @@ module ICache #(
     localparam TAG_BITS = 32 - INDEX_BITS - OFFSET_BITS;
 
     // Cache storage
-    reg [31:0] cache_data [0:NUM_LINES-1][0:WAYS-1];
+    reg [31:0] cache_data [0:NUM_LINES-1][0:WAYS-1][0:LINE_SIZE/4-1]; // 4 bytes per word
     reg [TAG_BITS-1:0] cache_tags [0:NUM_LINES-1][0:WAYS-1];
     reg cache_valid [0:NUM_LINES-1][0:WAYS-1];
 
@@ -108,15 +119,27 @@ module ICache #(
                     for (way = 0; way < WAYS; way = way + 1) begin
                         if (cache_valid[index][way] && cache_tags[index][way] == tag) begin
                             hit = 1;
-                            rdata = cache_data[index][way];
-                            ready = 1;
+                            rdata = cache_data[index][way][offset/4];
+                            ready = 1; // Data is ready if hit
                         end
                     end
                     if (!hit) begin
                         // Cache miss: Fetch from AHB bus
+                        ready = 0; // Data is not ready if miss
+                        if (addr[OFFSET_BITS-1:0] == 0) begin
+                            // Aligned address, use incrementing burst
                         HADDR = addr;
+                            HBURST = 3'b011; // 4-beat incrementing burst
+                        end else begin
+                            // Unaligned address, use wrapping burst
+                            HADDR = addr & ~(LINE_SIZE - 1);
+                            HBURST = 3'b100; // 4-beat wrapping burst
+                        end
+                        HMASTLOCK = 1'b0; // Not using locked transfer
+                        HPROT = 4'b0011; // Data access, non-cacheable, privileged, bufferable
+                        HSIZE = 3'b010; // 32-bit word transfer
                         HTRANS = 2'b10; // NONSEQ
-                        HWRITE = 0;     // Read operation
+                        HWRITE = 0; // Read operation
                         next_state = FETCH;
                     end
                 end
@@ -131,14 +154,17 @@ module ICache #(
                 // Update cache with fetched data
                 for (way = 0; way < WAYS; way = way + 1) begin
                     if (!cache_valid[index][way]) begin
-                        cache_data[index][way] = HRDATA;
+                        // Store fetched data in cache line
+                        for (int i = 0; i < LINE_SIZE/4; i = i + 1) begin
+                            cache_data[index][way][i] = HRDATA; // Assuming burst transfers fill this correctly
+                        end
                         cache_tags[index][way] = tag;
                         cache_valid[index][way] = 1;
                         break;
                     end
                 end
-                rdata = HRDATA;
-                ready = 1;
+                rdata = cache_data[index][way][offset/4];
+                ready = 1; // Data is ready after update
                 next_state = IDLE;
             end
         endcase
