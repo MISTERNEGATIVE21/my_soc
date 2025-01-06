@@ -13,7 +13,6 @@ This implementation ensures that the instruction is fetched from the cache when 
 when a stall condition is detected, and the fetch_enable signal is properly controlled. 
 
 */
-
 module IF_stage (
     input wire clk,
     input wire reset,
@@ -125,16 +124,16 @@ module ID_stage (
             ID_EX_Funct3 <= 3'b0;
             decode_enable_out <= 1'b0;
         end else if (fetch_enable_out) begin
-                // Decode instruction
-                ID_EX_PC <= IF_ID_PC;
-                ID_EX_ReadData1 <= ReadData1;
-                ID_EX_ReadData2 <= ReadData2;
-                ID_EX_Immediate <= Immediate;
-                ID_EX_Rs1 <= IF_ID_Instruction[19:15];
-                ID_EX_Rs2 <= IF_ID_Instruction[24:20];
-                ID_EX_Rd <= IF_ID_Instruction[11:7];
-                ID_EX_Funct7 <= IF_ID_Instruction[31:25];
-                ID_EX_Funct3 <= IF_ID_Instruction[14:12];
+            // Decode instruction
+            ID_EX_PC <= IF_ID_PC;
+            ID_EX_ReadData1 <= ReadData1;
+            ID_EX_ReadData2 <= ReadData2;
+            ID_EX_Immediate <= Immediate;
+            ID_EX_Rs1 <= IF_ID_Instruction[19:15];
+            ID_EX_Rs2 <= IF_ID_Instruction[24:20];
+            ID_EX_Rd <= IF_ID_Instruction[11:7];
+            ID_EX_Funct7 <= IF_ID_Instruction[31:25];
+            ID_EX_Funct3 <= IF_ID_Instruction[14:12];
             decode_enable_out <= 1'b1; // Enable decoding for the next stage
         end else begin
             decode_enable_out <= 1'b0; // Disable decoding

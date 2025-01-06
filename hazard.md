@@ -1,12 +1,13 @@
 # data hazards
-Data hazards occur in pipelined processors when instructions that are close together in the instruction stream (program order) depend on each other and their execution overlaps in the pipeline. There are three types of data hazards:
+Data hazards occur in pipelined processors when instructions that are close together in the instruction stream (program order) depend on each other and their execution overlaps 
+in the pipeline. There are three types of data hazards:
 
 Read After Write (RAW): Also known as a true dependency, occurs when an instruction needs to read a register that a previous instruction is writing to.
 Write After Read (WAR): Occurs when an instruction needs to write to a register that a previous instruction is reading from.
 Write After Write (WAW): Occurs when two instructions are writing to the same register, and the order of writes must be preserved.
+
 Example of a RAW Hazard
 Consider the following sequence of instructions:
-
 Assembly
 1. ADD R1, R2, R3   # R1 = R2 + R3
 2. SUB R4, R1, R5   # R4 = R1 - R5
@@ -18,6 +19,10 @@ To handle data hazards, several techniques can be used:
 Stalling: Pausing the pipeline until the hazard is resolved.
 Forwarding (Bypassing): Passing the result directly from one pipeline stage to another without going through the register file.
 Reordering Instructions: Changing the order of instructions to avoid the hazard.
+
+the hazard is handled by Bubble Insertion correctly in core/rv32i_core.v. 
+The insertion of the NOP instruction (32'h00000013) is used to ensure that the pipeline stages are stalled appropriately when a hazard is detected. 
+This prevents incorrect data from being propagated through the pipeline and maintains the correct program execution flow.
 
 # control hazards
 
