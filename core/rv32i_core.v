@@ -91,7 +91,14 @@ module PipelineRV32ICore_AHB #(
      // Internal signals for CPU control
     reg [31:0] regfile [0:31]; // Register file
     reg fetch_enable, decode_enable, execute_enable; // Pipeline stage enables
-    reg cpu_stall; // CPU stall signal
+
+    reg debug_stall; // Debug stall signal
+
+    // Hazard detection unit signals
+    wire hazard_stall;
+
+    // Combined stall signal
+    wire combined_stall = debug_stall || hazard_stall;
 
     // Instantiate I-Cache
     ICache #(
@@ -115,7 +122,7 @@ module PipelineRV32ICore_AHB #(
         .HRESP(HRESP)
     );
 
-    // Instantiate D-Cache
+    // Instantiate D-Cache with configurable write policy
     DCache #(
         .CACHE_SIZE(DCACHE_SIZE),
         .LINE_SIZE(DCACHE_LINE_SIZE),
@@ -260,6 +267,17 @@ module PipelineRV32ICore_AHB #(
         .immediate(Immediate)
     );
 
+    //hazard detect Unit
+    HazardDetectionUnit hdu (
+        .ID_EX_Rs1(ID_EX_Rs1),
+        .ID_EX_Rs2(ID_EX_Rs2),
+        .EX_MEM_Rd(EX_MEM_Rd),
+        .EX_MEM_RegWrite(EX_MEM_RegWrite),
+        .MEM_WB_Rd(MEM_WB_Rd),
+        .MEM_WB_RegWrite(MEM_WB_RegWrite),
+        .hazard_stall(hazard_stall)
+    );   
+
     // Instantiate JTAG Interface
     JTAG_Interface jtag (
         .TCK(TCK),
@@ -286,22 +304,12 @@ module PipelineRV32ICore_AHB #(
         .data_in(jtag_data_in),
         .step(jtag_step),
         .run(jtag_run),
-        .halt(cpu_halt)
+        .halt(debug_stall)
     );
-
 
     // Initial PC
     initial begin
         PC = 0;
-    end
-
-    // CPU halt control logic
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            cpu_stall <= 1'b0;
-        end else begin
-            cpu_stall <= cpu_halt;
-        end
     end
 
     // AHB Master Interface (example)

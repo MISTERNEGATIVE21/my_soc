@@ -7,6 +7,7 @@ module IF_stage (
     input wire i_cache_ready,
     input wire i_cache_hit,
     input wire HREADY,
+    input wire combined_stall, // New input for combined stall signal
     output reg [31:0] IF_ID_PC,
     output reg [31:0] IF_ID_Instruction,
     output reg [31:0] HADDR,
@@ -17,7 +18,7 @@ module IF_stage (
         if (reset) begin
             PC <= 32'b0;
             fetch_enable <= 1'b0;
-        end else if (!cpu_stall) begin
+        end else if (!combined_stall) begin
             if (fetch_enable) begin
                 if (i_cache_ready && i_cache_hit) begin
                     IF_ID_PC <= PC;
