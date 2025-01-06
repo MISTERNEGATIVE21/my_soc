@@ -1,3 +1,26 @@
+# data hazards
+Data hazards occur in pipelined processors when instructions that are close together in the instruction stream (program order) depend on each other and their execution overlaps in the pipeline. There are three types of data hazards:
+
+Read After Write (RAW): Also known as a true dependency, occurs when an instruction needs to read a register that a previous instruction is writing to.
+Write After Read (WAR): Occurs when an instruction needs to write to a register that a previous instruction is reading from.
+Write After Write (WAW): Occurs when two instructions are writing to the same register, and the order of writes must be preserved.
+Example of a RAW Hazard
+Consider the following sequence of instructions:
+
+Assembly
+1. ADD R1, R2, R3   # R1 = R2 + R3
+2. SUB R4, R1, R5   # R4 = R1 - R5
+The SUB instruction needs the result of the ADD instruction. If the ADD instruction has not completed its write-back stage before the SUB instruction reads R1, a RAW hazard occurs.
+
+Handling Data Hazards
+To handle data hazards, several techniques can be used:
+
+Stalling: Pausing the pipeline until the hazard is resolved.
+Forwarding (Bypassing): Passing the result directly from one pipeline stage to another without going through the register file.
+Reordering Instructions: Changing the order of instructions to avoid the hazard.
+
+# control hazards
+
 Handling control hazards in a pipelined RISC-V core involves managing the uncertainties that arise from branch instructions. 
 These hazards can be resolved using various techniques such as stalling, branch prediction, and delayed branching. Here are the common methods to handle control hazards:
 
