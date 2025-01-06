@@ -150,6 +150,7 @@ module PipelineRV32ICore_AHB #(
         .i_cache_ready(i_cache_ready),
         .i_cache_hit(i_cache_hit),
         .HREADY(HREADY),
+        .combined_stall(combined_stall), // Pass combined_stall signal
         .IF_ID_PC(IF_ID_PC),
         .IF_ID_Instruction(IF_ID_Instruction),
         .HADDR(HADDR),
@@ -167,6 +168,7 @@ module PipelineRV32ICore_AHB #(
         .ReadData1(ReadData1),
         .ReadData2(ReadData2),
         .Immediate(Immediate),
+        .combined_stall(combined_stall), // Pass combined_stall signal
         .ID_EX_PC(ID_EX_PC),
         .ID_EX_ReadData1(ID_EX_ReadData1),
         .ID_EX_ReadData2(ID_EX_ReadData2),
@@ -190,6 +192,7 @@ module PipelineRV32ICore_AHB #(
         .ID_EX_Funct7(ID_EX_Funct7),
         .ID_EX_Funct3(ID_EX_Funct3),
         .ALUControl(ALUControl),
+        .combined_stall(combined_stall), // Pass combined_stall signal
         .EX_MEM_ALUResult(EX_MEM_ALUResult),
         .EX_MEM_WriteData(EX_MEM_WriteData),
         .EX_MEM_Rd(EX_MEM_Rd),
@@ -210,6 +213,7 @@ module PipelineRV32ICore_AHB #(
         .d_cache_ready(d_cache_ready),
         .d_cache_hit(d_cache_hit),
         .d_cache_rdata(d_cache_rdata),
+        .combined_stall(combined_stall), // Pass combined_stall signal
         .MEM_WB_ReadData(MEM_WB_ReadData),
         .MEM_WB_Rd(MEM_WB_Rd),
         .MEM_WB_RegWrite(MEM_WB_RegWrite),
@@ -227,6 +231,7 @@ module PipelineRV32ICore_AHB #(
         .MEM_WB_Rd(MEM_WB_Rd),
         .EX_MEM_ALUResult(EX_MEM_ALUResult),
         .MemtoReg(MemtoReg),
+        .combined_stall(combined_stall), // Pass combined_stall signal
         .regfile(regfile)
     );
 
@@ -267,7 +272,7 @@ module PipelineRV32ICore_AHB #(
         .immediate(Immediate)
     );
 
-    //hazard detect Unit
+    // Hazard Detection Unit
     HazardDetectionUnit hdu (
         .ID_EX_Rs1(ID_EX_Rs1),
         .ID_EX_Rs2(ID_EX_Rs2),
