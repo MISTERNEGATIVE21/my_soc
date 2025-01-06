@@ -27,7 +27,6 @@ The handle_read_miss task remains the same, using burst transfers to fetch cache
 Cache Operations: 
 The always block continues to handle cache operations, including checking for hits and handling misses. 
 If a miss occurs, the appropriate handle_write_miss or handle_read_miss task is called to fetch the necessary data from the AHB-slave SRAM using burst transfers.
-
 ---------------------------------------------------------------------------------------------------------------
 */
 

@@ -10,6 +10,7 @@ module EX_stage (
     input wire [6:0] ID_EX_Funct7,
     input wire [2:0] ID_EX_Funct3,
     input wire [3:0] ALUControl,
+    input wire combined_stall, // New input for combined stall signal
     output reg [31:0] EX_MEM_ALUResult,
     output reg [31:0] EX_MEM_WriteData,
     output reg [4:0] EX_MEM_Rd,
@@ -35,7 +36,7 @@ module EX_stage (
             EX_MEM_WriteData <= 0;
             EX_MEM_Rd <= 0;
             EX_MEM_RegWrite <= 0;
-        end else if (!cpu_stall) begin
+        end else if (!combined_stall) begin
             if (execute_enable) begin
                 EX_MEM_ALUResult <= ALUResult;
                 EX_MEM_WriteData <= ID_EX_ReadData2;
