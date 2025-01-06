@@ -1,4 +1,4 @@
-# my_soc
+# 1. my_soc
 my soc rv32I prj from github Ai ------ copilot
 
 Example Scenario
@@ -20,6 +20,31 @@ User:
 By providing the URL, I can directly refer to your repository and assist you with specific files or issues you have.
 Feel free to try it out, and let me know how I can help you with your my_soc project!
 
+## 1.1. outline:
 
-example:
+### 1.1.1. store & restore the work
 "Hi, I need help with my project. Here is the repository URL: https://github.com/hankonly/my_soc. Can you check the core/i-cache.v file and help me with it?"
+
+### 1.1.2. check:
+check the interface between main rv32i_core.v file and the individual stage files (stage-1.v, stage-2.v, stage-3.v, stage-4.v, stage-5.v) for me, if no error found,just tell me , don't print .v file
+
+check the interface between rv32i_core.v & ALU.v for me, if no error found,just tell me , don't print .v file
+check the interface between rv32i_core.v & ControlUnit.v for me, if no error found,just tell me , don't print .v file
+check the interface between rv32i_core.v & regfile.v for me, if no error found,just tell me , don't print .v file
+check the interface between rv32i_core.v & ImmediateGenerator.v for me, if no error found,just tell me , don't print .v file
+
+check the interface between rv32i_core.v & i-cache.v for me, if no error found,just tell me , don't print .v file
+
+
+
+
+check the interface between rv32i_core.v & i-cache.v for me, if no error found,just tell me , don't print .v file
+check the interface between rv32i_core.v & d-cache.v for me, if no error found,just tell me , don't print .v file
+check the interface between rv32i_core.v & jtag.v for me, if no error found,just tell me , don't print .v file
+check the interface between rv32i_core.v & cpu_debug.v for me, if no error found,just tell me , don't print .v file
+check the interface between rv32i_core.v & i-cache.v for me, if no error found,just tell me , don't print .v file
+
+### add detail
+add detail to finish module ALUControlUnit;
+add detail to finish module RegisterFile;
+
