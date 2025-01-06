@@ -3,8 +3,7 @@
 module ID_stage (
     input wire clk,
     input wire reset,
-    input wire decode_enable,
-    input wire fetch_enable,
+    input wire fetch_enable_out, // Updated input from fetch stage
     input wire [31:0] IF_ID_PC,
     input wire [31:0] IF_ID_Instruction,
     input wire [31:0] ReadData1,
@@ -19,36 +18,36 @@ module ID_stage (
     output reg [4:0] ID_EX_Rs2,
     output reg [4:0] ID_EX_Rd,
     output reg [6:0] ID_EX_Funct7,
-    output reg [2:0] ID_EX_Funct3
+    output reg [2:0] ID_EX_Funct3,
+    output reg decode_enable_out // Output decode_enable_out signal
 );
 
     always @(posedge clk or posedge reset) begin
         if (reset) begin
-            decode_enable <= 1'b0;
-            ID_EX_PC <= 0;
-            ID_EX_ReadData1 <= 0;
-            ID_EX_ReadData2 <= 0;
-            ID_EX_Immediate <= 0;
-            ID_EX_Rs1 <= 0;
-            ID_EX_Rs2 <= 0;
-            ID_EX_Rd <= 0;
-            ID_EX_Funct7 <= 0;
-            ID_EX_Funct3 <= 0;           
+            ID_EX_PC <= 32'b0;
+            ID_EX_ReadData1 <= 32'b0;
+            ID_EX_ReadData2 <= 32'b0;
+            ID_EX_Immediate <= 32'b0;
+            ID_EX_Rs1 <= 5'b0;
+            ID_EX_Rs2 <= 5'b0;
+            ID_EX_Rd <= 5'b0;
+            ID_EX_Funct7 <= 7'b0;
+            ID_EX_Funct3 <= 3'b0;
+            decode_enable_out <= 1'b0;
         end else if (combined_stall) begin
-            // Insert NOP (stall the pipeline)
-            ID_EX_PC <= 0;
-            ID_EX_ReadData1 <= 0;
-            ID_EX_ReadData2 <= 0;
-            ID_EX_Immediate <= 0;
-            ID_EX_Rs1 <= 0;
-            ID_EX_Rs2 <= 0;
-            ID_EX_Rd <= 0;
-            ID_EX_Funct7 <= 0;
-            ID_EX_Funct3 <= 0;
-            decode_enable <= 1'b0;
-        end else if (decode_enable) begin
+            // Insert bubble (NOP) into the pipeline
+            ID_EX_PC <= 32'b0;
+            ID_EX_ReadData1 <= 32'b0;
+            ID_EX_ReadData2 <= 32'b0;
+            ID_EX_Immediate <= 32'b0;
+            ID_EX_Rs1 <= 5'b0;
+            ID_EX_Rs2 <= 5'b0;
+            ID_EX_Rd <= 5'b0;
+            ID_EX_Funct7 <= 7'b0;
+            ID_EX_Funct3 <= 3'b0;
+            decode_enable_out <= 1'b0;
+        end else if (fetch_enable_out) begin
                 // Decode instruction
-                // (Implementation depends on the instruction set)
                 ID_EX_PC <= IF_ID_PC;
                 ID_EX_ReadData1 <= ReadData1;
                 ID_EX_ReadData2 <= ReadData2;
@@ -58,9 +57,9 @@ module ID_stage (
                 ID_EX_Rd <= IF_ID_Instruction[11:7];
                 ID_EX_Funct7 <= IF_ID_Instruction[31:25];
                 ID_EX_Funct3 <= IF_ID_Instruction[14:12];
-            decode_enable <= fetch_enable;
+            decode_enable_out <= 1'b1; // Enable decoding for the next stage
         end else begin
-            decode_enable <= 1'b0;
+            decode_enable_out <= 1'b0; // Disable decoding
         end
     end
 endmodule

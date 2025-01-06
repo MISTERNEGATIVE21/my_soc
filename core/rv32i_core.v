@@ -144,7 +144,7 @@ module PipelineRV32ICore_AHB #(
     IF_stage if_stage (
         .clk(clk),
         .reset(reset),
-        .fetch_enable(fetch_enable),
+        .fetch_enable(fetch_enable), // Input signal
         .PC(PC),
         .HRDATA(HRDATA),
         .i_cache_ready(i_cache_ready),
@@ -156,6 +156,7 @@ module PipelineRV32ICore_AHB #(
         .HADDR(HADDR),
         .HTRANS(HTRANS),
         .HWRITE(HWRITE)
+        .fetch_enable_out(fetch_enable) // Output signal
     );
 
     ID_stage id_stage (

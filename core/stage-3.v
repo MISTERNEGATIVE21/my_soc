@@ -2,7 +2,7 @@ module EX_stage (
     input wire clk,
     input wire reset,
     input wire execute_enable,
-    input wire decode_enable,
+    input wire decode_enable_out,
     input wire [31:0] ID_EX_ReadData1,
     input wire [31:0] ID_EX_ReadData2,
     input wire [31:0] ID_EX_Immediate,
@@ -14,7 +14,8 @@ module EX_stage (
     output reg [31:0] EX_MEM_ALUResult,
     output reg [31:0] EX_MEM_WriteData,
     output reg [4:0] EX_MEM_Rd,
-    output reg EX_MEM_RegWrite
+    output reg EX_MEM_RegWrite,
+    output reg execute_enable_out // Output execute_enable signal
 );
 
     wire [31:0] ALUResult;
@@ -31,21 +32,26 @@ module EX_stage (
 
     always @(posedge clk or posedge reset) begin
         if (reset) begin
-            execute_enable <= 1'b0;
-            EX_MEM_ALUResult <= 0;
-            EX_MEM_WriteData <= 0;
-            EX_MEM_Rd <= 0;
-            EX_MEM_RegWrite <= 0;
-        end else if (!combined_stall) begin
-            if (execute_enable) begin
+            EX_MEM_ALUResult <= 32'b0;
+            EX_MEM_WriteData <= 32'b0;
+            EX_MEM_Rd <= 5'b0;
+            EX_MEM_RegWrite <= 1'b0;
+            execute_enable_out <= 1'b0;
+        end else if (combined_stall) begin
+            // Insert bubble (NOP) into the pipeline
+            EX_MEM_ALUResult <= 32'b0;
+            EX_MEM_WriteData <= 32'b0;
+            EX_MEM_Rd <= 5'b0;
+            EX_MEM_RegWrite <= 1'b0;
+            execute_enable_out <= 1'b0;
+        end else if (execute_enable) begin
                 EX_MEM_ALUResult <= ALUResult;
                 EX_MEM_WriteData <= ID_EX_ReadData2;
                 EX_MEM_Rd <= ID_EX_Rd;
                 EX_MEM_RegWrite <= RegWrite;
-            end
-            execute_enable <= decode_enable;
+            execute_enable_out <= decode_enable_out; // Propagate decode_enable_out to execute_enable_out
         end else begin
-            execute_enable <= 1'b0;
+            execute_enable_out <= 1'b0; // Disable execution
         end
     end
 endmodule

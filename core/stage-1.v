@@ -51,19 +51,19 @@ module IF_stage (
         end else if (fetch_enable) begin
                 if (i_cache_ready && i_cache_hit) begin
                     IF_ID_PC <= PC;
-                IF_ID_Instruction <= i_cache_rdata; // Fetch from cache on hit
-                next_PC <= PC + 4;
-                fetch_enable_out <= 1'b1; // Continue fetching
+                    IF_ID_Instruction <= i_cache_rdata; // Fetch from cache on hit
+                    next_PC <= PC + 4;
+                    fetch_enable_out <= 1'b1; // Continue fetching
                 end else if (HREADY) begin
                     IF_ID_PC <= PC;
-                IF_ID_Instruction <= HRDATA; // Fetch from HRDATA on miss
+                    IF_ID_Instruction <= HRDATA; // Fetch from HRDATA on miss
                     HADDR <= PC;
                     HTRANS <= 2'b10; // NONSEQ
-                HWRITE <= 1'b0; // Read operation
-                next_PC <= PC + 4;
-                fetch_enable_out <= 1'b1; // Continue fetching
-            end else begin
-                fetch_enable_out <= 1'b0; // Stall fetching
+                    HWRITE <= 1'b0; // Read operation
+                    next_PC <= PC + 4;
+                    fetch_enable_out <= 1'b1; // Continue fetching
+                end else begin
+                    fetch_enable_out <= 1'b0; // Stall fetching
                 end               
         end else begin
             fetch_enable_out <= 1'b0; // Stall fetching
