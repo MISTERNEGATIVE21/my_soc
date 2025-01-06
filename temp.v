@@ -28,27 +28,50 @@ module PipelineRV32ICore_AHB #(
     output wire TDO
 );
 
-    // Internal signals for pipeline stages
-    wire [31:0] IF_ID_PC;
-    wire [31:0] IF_ID_Instruction;
-    wire [31:0] ID_EX_PC;
-    wire [31:0] ID_EX_ReadData1;
-    wire [31:0] ID_EX_ReadData2;
-    wire [31:0] ID_EX_Immediate;
-    wire [4:0] ID_EX_Rs1;
-    wire [4:0] ID_EX_Rs2;
-    wire [4:0] ID_EX_Rd;
-    wire [6:0] ID_EX_Funct7;
-    wire [2:0] ID_EX_Funct3;
-    wire [31:0] EX_MEM_ALUResult;
-    wire [31:0] EX_MEM_WriteData;
-    wire [4:0] EX_MEM_Rd;
-    wire EX_MEM_RegWrite;
-    wire [31:0] MEM_WB_ReadData;
-    wire [4:0] MEM_WB_Rd;
-    wire MEM_WB_RegWrite;
+    // Pipeline registers
+    reg [31:0] IF_ID_PC;
+    reg [31:0] IF_ID_Instruction;
+    reg [31:32] ID_EX_PC;
+    reg [31:0] ID_EX_ReadData1;
+    reg [31:0] ID_EX_ReadData2;
+    reg [31:0] ID_EX_Immediate;
+    reg [4:0] ID_EX_Rs1;
+    reg [4:0] ID_EX_Rs2;
+    reg [4:0] ID_EX_Rd;
+    reg [6:0] ID_EX_Funct7;
+    reg [2:0] ID_EX_Funct3;
+    reg [31:0] EX_MEM_ALUResult;
+    reg [31:0] EX_MEM_WriteData;
+    reg [4:0] EX_MEM_Rd;
+    reg EX_MEM_RegWrite;
+    reg MEM_WB_RegWrite;
+    reg [31:0] MEM_WB_ReadData;
+    reg [4:0] MEM_WB_Rd;
+    
+    // Program counter
+    reg [31:0] PC;
 
-    // Internal signals for caches
+    // Control signals (simplified for illustration purposes)
+    wire [1:0] ALUOp;
+    wire MemRead;
+    wire MemtoReg;
+    wire MemWrite;
+    wire ALUSrc;
+    wire RegWrite;
+
+    // ALU control signals
+    wire [3:0] ALUControl;
+    wire [31:0] ALUResult;
+    wire Zero;
+
+    // Immediate generation
+    wire [31:0] Immediate;
+
+    // Register file
+    wire [31:0] ReadData1;
+    wire [31:0] ReadData2;
+
+    // Cache outputs
     wire [31:0] i_cache_rdata;
     wire i_cache_ready;
     wire i_cache_hit;
@@ -56,9 +79,19 @@ module PipelineRV32ICore_AHB #(
     wire d_cache_ready;
     wire d_cache_hit;
 
-    // Program counter
-    reg [31:0] PC;
-    reg fetch_enable, decode_enable, execute_enable;
+    // Internal signals for debugging
+    wire [31:0] jtag_address;
+    wire [31:0] jtag_data_out;
+    wire [31:0] jtag_data_in;
+    wire jtag_rd_wr;
+    wire jtag_enable;
+    wire jtag_step;
+    wire jtag_run;
+
+    // Internal signals for CPU control
+    reg [31:0] regfile [0:31]; // Register file
+    reg fetch_enable, decode_enable, execute_enable; // Pipeline stage enables
+    reg cpu_stall; // CPU stall signal
 
     // Instantiate I-Cache
     ICache #(
@@ -82,7 +115,7 @@ module PipelineRV32ICore_AHB #(
         .HRESP(HRESP)
     );
 
-    // Instantiate D-Cache
+    // Instantiate D-Cache with configurable write policy
     DCache #(
         .CACHE_SIZE(DCACHE_SIZE),
         .LINE_SIZE(DCACHE_LINE_SIZE),
@@ -256,6 +289,11 @@ module PipelineRV32ICore_AHB #(
         .halt(cpu_halt)
     );
 
+    // Initial PC
+    initial begin
+        PC = 0;
+    end
+
     // CPU halt control logic
     always @(posedge clk or posedge reset) begin
         if (reset) begin
@@ -266,7 +304,7 @@ module PipelineRV32ICore_AHB #(
     end
 
     // AHB Master Interface (example)
-    assign HADDR = pc;
+    assign HADDR = PC;
     assign HBURST = 3'b000;
     assign HMASTLOCK = 1'b0;
     assign HPROT = 4'b0011;
