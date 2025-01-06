@@ -37,6 +37,10 @@ check the interface between rv32i_core.v & jtag.v for me, if no error found,just
 check the interface between rv32i_core.v & cpu_debug.v for me, if no error found,just tell me , don't print .v file
 
 check the interface between top.v & rv32i_core.v for me, if no error found,just tell me , don't print .v file
+check the interface between top.v & rom.v for me, if no error found,just tell me , don't print .v file
+check the interface between top.v & sram.v for me, if no error found,just tell me , don't print .v file
+check the interface between top.v & ahb.v for me, if no error found,just tell me , don't print .v file
+check the interface between top.v & dma.v for me, if no error found,just tell me , don't print .v file
 
 
 ### add detail

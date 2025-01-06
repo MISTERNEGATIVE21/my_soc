@@ -219,9 +219,6 @@ module arbiter (
 
 endmodule
 
-
-
-
 /* 
 Explanation:
 Address Decoding: The ahb_decoder module checks the address (HADDR) and sets the appropriate select signal (rom_sel, sram_sel, apb_bridge_sel) based on the address range. 
@@ -250,8 +247,6 @@ module ahb_decoder(
     end
 
 endmodule
-
-
 
 /* 
 Explanation:
