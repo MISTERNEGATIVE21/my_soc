@@ -128,7 +128,7 @@ module ICache #(
                         ready = 0; // Data is not ready if miss
                         if (addr[OFFSET_BITS-1:0] == 0) begin
                             // Aligned address, use incrementing burst
-                        HADDR = addr;
+                            HADDR = addr;
                             HBURST = 3'b011; // 4-beat incrementing burst
                         end else begin
                             // Unaligned address, use wrapping burst

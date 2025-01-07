@@ -23,15 +23,20 @@ Feel free to try it out, and let me know how I can help you with your my_soc pro
 ## version
 v0.01
 - basic soc
-  - 5-stage-pipiline rv32i core
-  - i/d cache
-  - ahb-master/slave
-  - ahb-to-apb bridge
-  - jtag & cpu_debug
-  - hazard detect & handle
-  -  
-
-
+  - core 
+    - 5-stage-pipiline rv32i core
+    - i/d cache
+    - jtag & cpu_debug
+    - hazard detect & handle
+  - ahb
+    - master
+      - core
+      - dma 
+    - slave 
+      - sram
+      - rom
+      - ahb-to-apb bridge
+        - uart 
 
 ## 1.1. outline:
 
