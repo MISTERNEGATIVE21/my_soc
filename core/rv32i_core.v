@@ -186,7 +186,6 @@ module PipelineRV32ICore_AHB #(
     EX_stage ex_stage (
         .clk(clk),
         .reset(reset),
-        .execute_enable(execute_enable),
         .decode_enable_out(decode_enable_out),
         .ID_EX_ReadData1(ID_EX_ReadData1),
         .ID_EX_ReadData2(ID_EX_ReadData2),
