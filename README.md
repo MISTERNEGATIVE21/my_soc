@@ -20,6 +20,19 @@ User:
 By providing the URL, I can directly refer to your repository and assist you with specific files or issues you have.
 Feel free to try it out, and let me know how I can help you with your my_soc project!
 
+## version
+v0.01
+- basic soc
+  - 5-stage-pipiline rv32i core
+  - i/d cache
+  - ahb-master/slave
+  - ahb-to-apb bridge
+  - jtag & cpu_debug
+  - hazard detect & handle
+  -  
+
+
+
 ## 1.1. outline:
 
 ### 1.1.1. store & restore the work
