@@ -49,6 +49,8 @@ Feel free to try it out, and let me know how I can help you with your my_soc pro
       - if-stage，if i-cache miss 是否需要stall ? 不需要，因为if 阶段会自动让下一个 stage halt;
       - 这里就是 if / me stage 的差别了, me stage 是需要告知前面的 stage 等待它, 而 if 已经有机制控制后面的stage wait
       - 3 个 stall 的需求，实现是否相同 ----------------？
+3. 检查 i/d cache, 将2者的主要存储器件，修改为 sram
+    - 新建一个 sram module, 和 ahb_sram 不同，这个sram 是cpu内部的。
 
 
 ## 1.2. outline:

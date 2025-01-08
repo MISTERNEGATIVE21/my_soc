@@ -22,16 +22,20 @@ IDLE: The cache checks for hits and initiates a bus fetch on a miss.
 FETCH: The cache waits for data to be fetched from the AHB bus.
 UPDATE: The cache updates its content with the fetched data.
 
-Initialization: The cache is initialized to mark all lines as invalid.
+Initialization: 
+The cache is initialized to mark all lines as invalid.
 
-Cache Miss Handling: On a cache miss, the cache fetches the data from the AHB bus, updates the cache, and then sets the data to be read.
-
+Cache Miss Handling: 
+On a cache miss, the cache fetches the data from the AHB bus, updates the cache, and then sets the data to be read.
 In the context of the I-Cache design, the CPU typically waits for the ready signal to indicate whether an instruction is available for processing. 
 When there is an I-Cache miss, the ready signal will not be asserted until the requested instruction is fetched from the AHB bus and the cache is updated.
 Here is a brief overview of the relevant signals and their roles:
 valid: This signal indicates that the address provided by the CPU is valid and a cache lookup should be performed.
 hit: This signal indicates whether the requested instruction is found in the cache.
 ready: This signal indicates that the data is ready to be used by the CPU. If there is an I-Cache miss, this signal will be deasserted until the instruction is fetched from the AHB bus.
+
+By using SRAM modules, you can efficiently manage the cache storage, potentially improving performance and reducing resource usage. 
+Ensure that the SRAM modules are appropriately instantiated and controlled within the state machine logic for cache operations.
 
 ---------------------------------------------------------------------------------------------------------------
 */
@@ -68,9 +72,35 @@ module ICache #(
     localparam TAG_BITS = 32 - INDEX_BITS - OFFSET_BITS;
 
     // Cache storage
-    reg [31:0] cache_data [0:NUM_LINES-1][0:WAYS-1][0:LINE_SIZE/4-1]; // 4 bytes per word
-    reg [TAG_BITS-1:0] cache_tags [0:NUM_LINES-1][0:WAYS-1];
     reg cache_valid [0:NUM_LINES-1][0:WAYS-1];
+
+    // cache implemented by registers, replace by sram
+    // reg [31:0] cache_data [0:NUM_LINES-1][0:WAYS-1][0:LINE_SIZE/4-1]; // 4 bytes per word
+    // reg [TAG_BITS-1:0] cache_tags [0:NUM_LINES-1][0:WAYS-1];
+
+    // Assuming SRAM module is defined with ADDR_WIDTH and DATA_WIDTH parameters
+    // SRAM instances for cache_data and cache_tags
+    SRAM #(
+        .ADDR_WIDTH(INDEX_BITS + $clog2(WAYS)),
+        .DATA_WIDTH(LINE_SIZE * 8)
+    ) cache_data (
+        .clk(clk),
+        .addr({index, way}),
+        .wdata(HRDATA), // Data from AHB bus
+        .we(we_cache_data), // Write enable signal
+        .rdata(data_out)
+    );
+
+    SRAM #(
+        .ADDR_WIDTH(INDEX_BITS + $clog2(WAYS)),
+        .DATA_WIDTH(TAG_BITS)
+    ) cache_tags (
+        .clk(clk),
+        .addr({index, way}),
+        .wdata(tag),
+        .we(we_cache_tags), // Write enable signal
+        .rdata(tag_out)
+    );   
 
     // Temporary variables
     wire [INDEX_BITS-1:0] index = addr[OFFSET_BITS + INDEX_BITS - 1 : OFFSET_BITS];
