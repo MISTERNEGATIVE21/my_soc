@@ -1,5 +1,3 @@
-
-
 module ID_stage (
     input wire clk,
     input wire reset,

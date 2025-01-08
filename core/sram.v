@@ -4,6 +4,8 @@ this sram for i/d cache
 To transition the cache storage to SRAM, you can replace the reg arrays with SRAM modules. 
 Here’s a simplified approach to modify the i-cache.v and d-cache.v files to use SRAM.
 
+This change should improve the efficiency and scalability of your cache storage.
+
 */
 
 module SRAM #(

@@ -4,8 +4,10 @@ This module will identify data hazards and insert NOP instructions (or stall the
 
 The hazard detection unit will monitor the pipeline registers to detect hazards and control the pipeline accordingly.
 
-In a typical 5-stage pipeline (Fetch, Decode, Execute, Memory, Write-back), the pipeline control logic to handle stalls due to hazards is usually placed in the Decode (ID) stage. 
-This is because the Decode stage has access to the instruction being decoded and can thus detect hazards early enough to prevent issues in subsequent stages.
+In a typical 5-stage pipeline (Fetch, Decode, Execute, Memory, Write-back), the pipeline control logic to handle stalls 
+due to hazards is usually placed in the Decode (ID) stage. 
+This is because the Decode stage has access to the instruction being decoded and can thus detect hazards early 
+enough to prevent issues in subsequent stages.
 
 */
 
