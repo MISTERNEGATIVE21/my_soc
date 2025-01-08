@@ -123,7 +123,7 @@ module DCache #(
                     // Read operation
                     rdata <= data_array[index][hit_way][offset/4];
                 end
-            ready <= 1; // Data is ready if hit
+				ready <= 1; // Data is ready if hit
             end else begin
                 // Cache miss
             ready <= 0; // Data is not ready if miss

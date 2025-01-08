@@ -94,13 +94,28 @@ module PipelineRV32ICore_AHB #(
     reg [31:0] regfile [0:31]; // Register file
     reg fetch_enable, fetch_enable_out, decode_enable_out, execute_enable_out; // Pipeline stage enables
 
-    reg debug_stall; // Debug stall signal
+    // Debug stall signal
+    reg debug_stall; 
 
     // Hazard detection unit signals
     wire hazard_stall;
 
+    // mem stall unit signals
+    wire mem_stall;
+
     // Combined stall signal
-    wire combined_stall = debug_stall || hazard_stall;
+    wire combined_stall = debug_stall || hazard_stall || mem_stall;
+
+    // Control signal for fetch_enable
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            fetch_enable <= 1'b0;
+        end else if (combined_stall) begin
+            fetch_enable <= 1'b0;
+        end else begin
+            fetch_enable <= 1'b1; // Enable fetching if no stall
+        end
+    end
 
     // Instantiate I-Cache
     ICache #(
@@ -148,16 +163,12 @@ module PipelineRV32ICore_AHB #(
         .reset(reset),
         .fetch_enable(fetch_enable), // Input signal
         .PC(PC),
-        .HRDATA(HRDATA),
         .i_cache_ready(i_cache_ready),
         .i_cache_hit(i_cache_hit),
-        .HREADY(HREADY),
+        .i_cache_rdata(i_cache_rdata),
         .combined_stall(combined_stall), // Pass combined_stall signal
         .IF_ID_PC(IF_ID_PC),
         .IF_ID_Instruction(IF_ID_Instruction),
-        .HADDR(HADDR),
-        .HTRANS(HTRANS),
-        .HWRITE(HWRITE)
         .fetch_enable_out(fetch_enable_out) // Output signal
     );
 
@@ -212,8 +223,6 @@ module PipelineRV32ICore_AHB #(
         .EX_MEM_RegWrite(EX_MEM_RegWrite),
         .MemRead(MemRead),
         .MemWrite(MemWrite),
-        .HRDATA(HRDATA),
-        .HREADY(HREADY),
         .d_cache_ready(d_cache_ready),
         .d_cache_hit(d_cache_hit),
         .d_cache_rdata(d_cache_rdata),
@@ -221,11 +230,8 @@ module PipelineRV32ICore_AHB #(
         .MEM_WB_ReadData(MEM_WB_ReadData),
         .MEM_WB_Rd(MEM_WB_Rd),
         .MEM_WB_RegWrite(MEM_WB_RegWrite),
-        .HADDR(HADDR),
-        .HTRANS(HTRANS),
-        .HWRITE(HWRITE),
-        .HWDATA(HWDATA),
         .memory_enable_out(memory_enable_out)
+        .mem_stall(mem_stall)      
     );
 
     WB_stage wb_stage (

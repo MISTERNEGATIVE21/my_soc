@@ -9,28 +9,22 @@ This is because the Decode stage has access to the instruction being decoded and
 
 */
 
-module HazardDetectionUnit(
-    input [4:0] ID_EX_Rs1,
-    input [4:0] ID_EX_Rs2,
-    input [4:0] EX_MEM_Rd,
-    input EX_MEM_RegWrite,
-    input [4:0] MEM_WB_Rd,
-    input MEM_WB_RegWrite,
+module HazardDetectionUnit (
+    input wire [4:0] ID_EX_Rs1,
+    input wire [4:0] ID_EX_Rs2,
+    input wire [4:0] EX_MEM_Rd,
+    input wire EX_MEM_RegWrite,
+    input wire [4:0] MEM_WB_Rd,
+    input wire MEM_WB_RegWrite,
     output reg hazard_stall
 );
 
     always @(*) begin
-        // Default no stall
-        hazard_stall = 0;
-        
-        // Check for data hazards
-        if (EX_MEM_RegWrite && (EX_MEM_Rd != 0) && 
-            (EX_MEM_Rd == ID_EX_Rs1 || EX_MEM_Rd == ID_EX_Rs2)) begin
+        if ((EX_MEM_RegWrite && (EX_MEM_Rd != 0) && ((EX_MEM_Rd == ID_EX_Rs1) || (EX_MEM_Rd == ID_EX_Rs2))) ||
+            (MEM_WB_RegWrite && (MEM_WB_Rd != 0) && ((MEM_WB_Rd == ID_EX_Rs1) || (MEM_WB_Rd == ID_EX_Rs2)))) begin
             hazard_stall = 1;
-        end else if (MEM_WB_RegWrite && (MEM_WB_Rd != 0) &&
-            (MEM_WB_Rd == ID_EX_Rs1 || MEM_WB_Rd == ID_EX_Rs2)) begin
-            hazard_stall = 1;
+        end else begin
+            hazard_stall = 0;
         end
     end
-
 endmodule

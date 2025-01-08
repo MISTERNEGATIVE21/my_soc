@@ -12,23 +12,24 @@ Program Counter Update: Added a separate always block to update the PC based on 
 This implementation ensures that the instruction is fetched from the cache when there is a hit, a NOP instruction is inserted into the pipeline
 when a stall condition is detected, and the fetch_enable signal is properly controlled. 
 
+cache-miss:
+Redundant AHB accesses during a cache miss are generally detrimental to performance. 
+It is important to ensure that only the I-cache initiates memory accesses during a cache miss and that the IF stage waits for the cache to signal readiness. 
+This approach avoids bus contention, reduces latency, and ensures efficient use of memory resources.
+
 */
 module IF_stage (
     input wire clk,
     input wire reset,
     input wire fetch_enable,
     input wire [31:0] PC,
-    input wire [31:0] HRDATA,
     input wire i_cache_ready,
     input wire i_cache_hit,
-    input wire HREADY,
+    input wire [31:0] i_cache_rdata,   
     input wire combined_stall, // New input for combined stall signal
     output reg [31:0] IF_ID_PC,
     output reg [31:0] IF_ID_Instruction,
-    output reg [31:0] HADDR,
-    output reg [1:0] HTRANS,
-    output reg HWRITE,
-    output reg fetch_enable_out // Output fetch_enable signal
+    output reg fetch_enable_out
 );
 
     reg [31:0] next_PC;
@@ -37,31 +38,22 @@ module IF_stage (
         if (reset) begin
             IF_ID_PC <= 32'b0;
             IF_ID_Instruction <= 32'h00000013; // NOP instruction
-            HADDR <= 32'b0;
-            HTRANS <= 2'b00; // IDLE
-            HWRITE <= 1'b0; // Read operation
             fetch_enable_out <= 1'b0;
             next_PC <= 32'b0;
         end else if (combined_stall) begin
             // Insert bubble (NOP) into the pipeline
             IF_ID_Instruction <= 32'h00000013; // NOP instruction
-            fetch_enable_out <= 1'b0;
+            fetch_enable_out <= 1'b0; // Stall fetching
         end else if (fetch_enable) begin
                 if (i_cache_ready && i_cache_hit) begin
+                    // Cache hit: Fetch instruction from cache
                     IF_ID_PC <= PC;
-                    IF_ID_Instruction <= i_cache_rdata; // Fetch from cache on hit
+                    IF_ID_Instruction <= i_cache_rdata;
                     next_PC <= PC + 4;
                     fetch_enable_out <= 1'b1; // Continue fetching
-                end else if (HREADY) begin
-                    IF_ID_PC <= PC;
-                    IF_ID_Instruction <= HRDATA; // Fetch from HRDATA on miss
-                    HADDR <= PC;
-                    HTRANS <= 2'b10; // NONSEQ
-                    HWRITE <= 1'b0; // Read operation
-                    next_PC <= PC + 4;
-                    fetch_enable_out <= 1'b1; // Continue fetching
-                end else begin
-                    fetch_enable_out <= 1'b0; // Stall fetching
+            end else begin
+                // i Cache miss or not ready: fetch_enable_out set to 0 ; next stage will not advance, so thers is no need to out a stall like d-cacke miss
+                fetch_enable_out <= 1'b0;
                 end               
         end else begin
             fetch_enable_out <= 1'b0; // Stall fetching
@@ -70,9 +62,9 @@ module IF_stage (
 
     always @(posedge clk or posedge reset) begin
         if (reset) begin
-            PC <= 32'b0;
-        end else if (!combined_stall && fetch_enable) begin
-            PC <= next_PC; // Update PC if not stalling and fetch is enabled
+            next_PC <= 32'b0;
+        end else if (!combined_stall && fetch_enable && (i_cache_ready && i_cache_hit)) begin
+            next_PC <= PC + 4; // Update PC if not stalling and fetch is enabled
         end
     end
 endmodule
