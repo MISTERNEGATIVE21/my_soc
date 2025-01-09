@@ -17,17 +17,17 @@ module AHB_ROM_Slave (
     // 32KB ROM (8192 x 32-bit words)
     reg [31:0] rom [0:8191];
 
-    // Initialize ROM content (example data)
-    initial begin
-        // You can load your ROM content here
-        // Example: $readmemh("rom_init.mem", rom);
-    end
-
     // AHB states
     localparam ST_IDLE = 2'b00, ST_BUSY = 2'b01, ST_NONSEQ = 2'b10, ST_SEQ = 2'b11;
 
     // Base address of the ROM
     localparam BASE_ADDR = 32'h0000_0000;
+
+
+    // Initialize ROM content (example data)
+    initial begin
+        $readmemh("../ram_init_file/rom_init.hex", rom);
+    end   
 
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin

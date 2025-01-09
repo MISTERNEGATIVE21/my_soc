@@ -25,6 +25,10 @@ module AHB_SRAM_Slave #(
     // Base address of the SRAM
     localparam BASE_ADDR = 32'h0010_0000;
 
+    initial begin
+        $readmemh("../ram_init_file/sram_init.hex", sram);
+    end
+
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
             HRDATA <= 32'b0;

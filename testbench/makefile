@@ -16,7 +16,7 @@ HEX = x.hex
 DUMP = x.dump
 
 # Default target
-all: $(BIN) $(HEX) $(DUMP)
+all: $(BIN) $(HEX) $(DUMP) post_build
 
 # Rule to assemble the source files
 %.o: %.s
@@ -34,9 +34,15 @@ $(HEX): $(BIN)
 $(DUMP): $(BIN)
     $(OBJDUMP) -d $< > $@
 
+# Rule to copy bin and hex files to ../ram_init_file
+post_build:
+    @if [ -f ../ram_init_file/$(BIN) ]; then rm ../ram_init_file/$(BIN); fi
+    @if [ -f ../ram_init_file/$(HEX) ]; then rm ../ram_init_file/$(HEX); fi
+    cp $(BIN) $(HEX) ../ram_init_file/
+
 # Clean up generated files
 clean:
     rm -f $(OBJS) $(BIN) $(HEX) $(DUMP)
 
 # Phony targets
-.PHONY: all clean
+.PHONY: all clean post_build
