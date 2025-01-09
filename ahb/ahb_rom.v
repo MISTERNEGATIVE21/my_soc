@@ -1,4 +1,7 @@
-module AHB_ROM_Slave (
+module AHB_ROM_Slave #(
+    parameter BASE_ADDR = 32'h0000_0000 // Default base address   
+    parameter SIZE = 8192 // Default size is 8192 words (32KB)
+)(
     input wire HCLK,         // AHB system clock
     input wire HRESETn,      // AHB system reset (active low)
     input wire [31:0] HADDR, // AHB address
@@ -14,17 +17,13 @@ module AHB_ROM_Slave (
     output reg HRESP         // Transfer response (0=OKAY, 1=ERROR)
 );
 
-    // 32KB ROM (8192 x 32-bit words)
-    reg [31:0] rom [0:8191];
-
     // AHB states
     localparam ST_IDLE = 2'b00, ST_BUSY = 2'b01, ST_NONSEQ = 2'b10, ST_SEQ = 2'b11;
 
-    // Base address of the ROM
-    localparam BASE_ADDR = 32'h0000_0000;
+    // ROM (Read-Only Memory) declaration
+    reg [31:0] rom [0:SIZE-1];
 
-
-    // Initialize ROM content (example data)
+    // Initialize ROM content from hex file
     initial begin
         $readmemh("../ram_init_file/rom_init.hex", rom);
     end   
@@ -35,13 +34,15 @@ module AHB_ROM_Slave (
             HREADY <= 1'b1;
             HRESP <= 1'b0;
         end else begin
+            // Default values
+            HREADY <= 1'b1;
+            HRESP <= 1'b0; // OKAY response
+
             // Check if the address is within the ROM range
-            if (HTRANS != ST_IDLE && HADDR >= BASE_ADDR && HADDR < BASE_ADDR + 32'h0000_8000) begin
+            if (HTRANS != ST_IDLE && HADDR >= BASE_ADDR && HADDR < BASE_ADDR + (SIZE * 4)) begin
                 if (!HWRITE) begin
                     // Read operation
-                    HRDATA <= rom[HADDR[14:2]];
-                    HREADY <= 1'b1;
-                    HRESP <= 1'b0; // OKAY response
+                    HRDATA <= rom[HADDR[clog2(SIZE)+1:2]];
                 end else begin
                     // Write operation not allowed in ROM
                     HREADY <= 1'b1;
@@ -53,5 +54,17 @@ module AHB_ROM_Slave (
             end
         end
     end
-
 endmodule
+
+// Function to calculate the ceiling of logarithm base 2
+function integer clog2;
+    input integer value;
+    integer result;
+    begin
+        result = 0;
+        while ((2 ** result) < value) begin
+            result = result + 1;
+        end
+        clog2 = result;
+    end
+endfunction

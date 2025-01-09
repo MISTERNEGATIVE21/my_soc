@@ -1,4 +1,5 @@
 module AHB_SRAM_Slave #(
+    parameter BASE_ADDR = 32'h0010_0000 // Default base address       
     parameter SIZE = 256 // Default size is 256 words
 )(
     input wire HCLK,         // AHB system clock
@@ -16,14 +17,11 @@ module AHB_SRAM_Slave #(
     output reg HRESP         // Transfer response (0=OKAY, 1=ERROR)
 );
 
-    // Base address of the SRAM
-    localparam BASE_ADDR = 32'h0010_0000;
-
     // Instantiate the new SRAM module
     wire [31:0] sram_data_out;
     reg [31:0] sram_data_in;
     reg sram_we;
-    reg [$clog2(SIZE)-1:0] sram_addr;
+    reg [clog2(SIZE)-1:0] sram_addr;
 
     // New SRAM instance
     sram_ahb #(
@@ -47,7 +45,7 @@ module AHB_SRAM_Slave #(
             HREADY <= 1'b1;
             HRESP <= 1'b0; // OKAY response
             sram_we <= 1'b0;
-            sram_addr <= HADDR[31:2] - BASE_ADDR[31:2]; // Adjust address width
+            sram_addr <= (HADDR - BASE_ADDR) >> 2; // Adjust address width
 
             // Check if the address is within the SRAM range
             if (HTRANS != 2'b00 && HADDR >= BASE_ADDR && HADDR < BASE_ADDR + (SIZE * 4)) begin
