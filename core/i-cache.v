@@ -70,6 +70,7 @@ module ICache #(
     localparam INDEX_BITS = $clog2(NUM_LINES);
     localparam OFFSET_BITS = $clog2(LINE_SIZE);
     localparam TAG_BITS = 32 - INDEX_BITS - OFFSET_BITS;
+    localparam BURST_LENGTH = LINE_SIZE / 4; // Number of words per cache line
 
     // Cache storage
         reg cache_valid [0:NUM_LINES-1][0:WAYS-1];
@@ -107,6 +108,28 @@ module ICache #(
     wire [OFFSET_BITS-1:0] offset = addr[OFFSET_BITS-1:0];
     integer way;
 
+    // Function to determine HBURST value based on LINE_SIZE and address alignment
+    function [2:0] get_hburst(input integer line_size, input [OFFSET_BITS-1:0] addr_offset);
+        if (addr_offset == 0) begin
+            case (line_size)
+                4: get_hburst = 3'b000;   // Single transfer
+                8: get_hburst = 3'b001;   // 4-beat incrementing burst
+                16: get_hburst = 3'b011;  // 8-beat incrementing burst
+                32: get_hburst = 3'b101;  // 16-beat incrementing burst
+                64: get_hburst = 3'b111;  // 16-beat incrementing burst
+                default: get_hburst = 3'b111; // Default to 16-beat incrementing burst
+            endcase
+        end else begin
+            // For unaligned addresses, use wrapping burst
+            case (line_size)
+                16: get_hburst = 3'b010;  // 4-beat wrapping burst
+                32: get_hburst = 3'b100;  // 8-beat wrapping burst
+                64: get_hburst = 3'b110;  // 16-beat wrapping burst
+                default: get_hburst = 3'b110; // Default to 16-beat wrapping burst
+            endcase
+        end
+    endfunction
+
     // State machine states
     localparam IDLE = 2'b00, FETCH = 2'b01, UPDATE = 2'b10;
     reg [1:0] state, next_state;
@@ -117,7 +140,7 @@ module ICache #(
     // Initialize cache
     initial begin
         for (way = 0; way < WAYS; way = way + 1) begin
-            for (int i = 0; i < NUM_LINES; i = i + 1) begin
+            for (integer i = 0; i < NUM_LINES; i = i + 1) begin
                 cache_valid[i][way] = 0;
             end
         end
@@ -128,7 +151,7 @@ module ICache #(
         if (reset) begin
             // Reset logic
             for (way = 0; way < WAYS; way = way + 1) begin
-                for (int i = 0; i < NUM_LINES; i = i + 1) begin
+                for (integer i = 0; i < NUM_LINES; i = i + 1) begin
                     cache_valid[i][way] <= 0;
                 end
             end
@@ -159,13 +182,8 @@ module ICache #(
                     if (!hit) begin
                         // Cache miss: Fetch from AHB bus
                         ready = 0; // Data is not ready if miss
-                        if (addr % LINE_SIZE == 0) begin
-                            HADDR = addr; // Aligned address
-                            HBURST = 3'b111; // 16-beat incrementing burst
-                        end else begin
-                            HADDR = addr & ~(LINE_SIZE - 1); // Align address to cache line boundary
-                            HBURST = 3'b100; // 16-beat wrapping burst
-                        end
+                        HADDR = (addr[OFFSET_BITS-1:0] == 0) ? addr : (addr & ~(LINE_SIZE - 1));
+                        HBURST = get_hburst(LINE_SIZE, addr[OFFSET_BITS-1:0]);
                         HMASTLOCK = 1'b0; // Not using locked transfer
                         HPROT = 4'b0011; // Data access, non-cacheable, privileged, bufferable
                         HSIZE = 3'b010; // 32-bit word transfer
@@ -193,7 +211,7 @@ module ICache #(
                         end
                     end
                     burst_count = burst_count + 1;
-                    if (burst_count == 16) begin
+                    if (burst_count == BURST_LENGTH) begin
                     next_state = UPDATE;
                     end
                 end
@@ -212,30 +230,6 @@ module ICache #(
                 next_state = IDLE;
             end
         endcase
-    end
-
-endmodule
-
-// SRAM module definition
-module SRAM #(
-    parameter ADDR_WIDTH = 10,
-    parameter DATA_WIDTH = 32
-)(
-    input wire clk,
-    input wire [ADDR_WIDTH-1:0] addr,
-    input wire [DATA_WIDTH-1:0] wdata,
-    input wire we,
-    output reg [DATA_WIDTH-1:0] rdata
-);
-
-    // SRAM storage
-    reg [DATA_WIDTH-1:0] mem [(2**ADDR_WIDTH)-1:0];
-
-    always @(posedge clk) begin
-        if (we) begin
-            mem[addr] <= wdata;
-        end
-        rdata <= mem[addr];
     end
 
 endmodule

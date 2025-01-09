@@ -305,27 +305,3 @@ module DCache #(
     endtask
 
 endmodule
-
-// SRAM module definition
-module SRAM #(
-    parameter ADDR_WIDTH = 10,
-    parameter DATA_WIDTH = 32
-)(
-    input wire clk,
-    input wire [ADDR_WIDTH-1:0] addr,
-    input wire [DATA_WIDTH-1:0] wdata,
-    input wire we,
-    output reg [DATA_WIDTH-1:0] rdata
-);
-
-    // SRAM storage
-    reg [DATA_WIDTH-1:0] mem [(2**ADDR_WIDTH)-1:0];
-
-    always @(posedge clk) begin
-        if (we) begin
-            mem[addr] <= wdata;
-        end
-        rdata <= mem[addr];
-    end
-
-endmodule
