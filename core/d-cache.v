@@ -64,12 +64,38 @@ module DCache #(
     localparam INDEX_BITS = $clog2(NUM_LINES);
     localparam OFFSET_BITS = $clog2(LINE_SIZE);
     localparam TAG_BITS = 32 - INDEX_BITS - OFFSET_BITS;
+    localparam BURST_LENGTH = LINE_SIZE / 4; // Number of words per cache line
 
     // Cache structures
     reg [TAG_BITS-1:0] tag_array [0:NUM_LINES-1][0:WAYS-1];
-    reg [31:0] data_array [0:NUM_LINES-1][0:WAYS-1][0:LINE_SIZE/4-1]; // 4 bytes per word
     reg valid_array [0:NUM_LINES-1][0:WAYS-1];
     reg dirty_array [0:NUM_LINES-1][0:WAYS-1];
+
+    // SRAM instances for cache_data and cache_tags
+    wire [31:0] data_out;
+    wire [TAG_BITS-1:0] tag_out;
+
+    SRAM #(
+        .ADDR_WIDTH(INDEX_BITS + $clog2(WAYS)),
+        .DATA_WIDTH(LINE_SIZE * 8)
+    ) cache_data (
+        .clk(clk),
+        .addr({index, way}),
+        .wdata(HRDATA), // Data from AHB bus
+        .we(we_cache_data), // Write enable signal
+        .rdata(data_out)
+    );
+
+    SRAM #(
+        .ADDR_WIDTH(INDEX_BITS + $clog2(WAYS)),
+        .DATA_WIDTH(TAG_BITS)
+    ) cache_tags (
+        .clk(clk),
+        .addr({index, way}),
+        .wdata(tag),
+        .we(we_cache_tags), // Write enable signal
+        .rdata(tag_out)
+    );
 
     // Extract index, tag, and offset from address
     wire [INDEX_BITS-1:0] index = addr[OFFSET_BITS + INDEX_BITS - 1:OFFSET_BITS];
@@ -80,6 +106,28 @@ module DCache #(
     reg hit_way;
     reg [31:0] writeback_addr;
     reg [31:0] writeback_data [0:LINE_SIZE/4-1];
+
+    // Function to determine HBURST value based on LINE_SIZE and address alignment
+    function [2:0] get_hburst(input integer line_size, input [OFFSET_BITS-1:0] addr_offset);
+        if (addr_offset == 0) begin
+        case (line_size)
+            4: get_hburst = 3'b000;   // Single transfer
+            8: get_hburst = 3'b001;   // 4-beat incrementing burst
+                16: get_hburst = 3'b011;  // 8-beat incrementing burst
+                32: get_hburst = 3'b101;  // 16-beat incrementing burst
+            64: get_hburst = 3'b111;  // 16-beat incrementing burst
+            default: get_hburst = 3'b111; // Default to 16-beat incrementing burst
+        endcase
+        end else begin
+            // For unaligned addresses, use wrapping burst
+            case (line_size)
+                16: get_hburst = 3'b010;  // 4-beat wrapping burst
+                32: get_hburst = 3'b100;  // 8-beat wrapping burst
+                64: get_hburst = 3'b110;  // 16-beat wrapping burst
+                default: get_hburst = 3'b110; // Default to 16-beat wrapping burst
+            endcase
+        end
+    endfunction
 
     // Initialize cache structures
     initial begin
@@ -168,17 +216,11 @@ module DCache #(
     // Task for handling write miss using AHB bus with burst transfers
     task handle_write_miss(input [31:0] addr, input [31:0] data);
         integer i;
+        integer cache_offset;
         begin
-            // Check alignment with the cache line size
-            if (addr[OFFSET_BITS-1:0] == 0) begin
-                // Aligned address, use incrementing burst
-                HADDR <= addr;
-                HBURST <= 3'b011;       // 4-beat incrementing burst
-            end else begin
-                // Unaligned address, use wrapping burst
-                HADDR <= addr & ~(LINE_SIZE - 1);
-                HBURST <= 3'b100;       // 4-beat wrapping burst
-            end
+            // Set address and HBURST based on alignment
+            HADDR <= (addr[OFFSET_BITS-1:0] == 0) ? addr : (addr & ~(LINE_SIZE - 1));
+            HBURST <= get_hburst(LINE_SIZE, addr[OFFSET_BITS-1:0]);
 
             HMASTLOCK <= 1'b0;          // Not using locked transfer
             HPROT <= 4'b0011;           // Data access, non-cacheable, privileged, bufferable
@@ -187,8 +229,14 @@ module DCache #(
             HWRITE <= 1'b1;             // Write operation
             
             // Wait for the AHB transfer to complete for each word in the burst
-            for (i = 0; i < LINE_SIZE/4; i = i + 1) begin
-                HWDATA <= data_array[index][way][i]; // Write the current data to AHB bus
+            for (i = 0; i < BURST_LENGTH; i = i + 1) begin
+                // Calculate the correct offset within the cache line
+                if (HBURST == 3'b100) begin // Wrapping burst
+                    cache_offset = (addr[OFFSET_BITS-1:2] + i) % (LINE_SIZE/4);
+                end else begin // Incrementing burst
+                    cache_offset = i;
+                end
+                HWDATA <= data_array[index][way][cache_offset]; // Write the current data to AHB bus
                 @(posedge clk);
                 while (!HREADY) begin
                     @(posedge clk);
@@ -213,16 +261,9 @@ module DCache #(
     task handle_read_miss(input [31:0] addr);
         integer i;
         begin
-            // Check alignment with the cache line size
-            if (addr[OFFSET_BITS-1:0] == 0) begin
-                // Aligned address, use incrementing burst
-                HADDR <= addr;
-                HBURST <= 3'b011;       // 4-beat incrementing burst
-            end else begin
-                // Unaligned address, use wrapping burst
-                HADDR <= addr & ~(LINE_SIZE - 1);
-                HBURST <= 3'b100;       // 4-beat wrapping burst
-            end
+            // Set address and HBURST based on alignment
+            HADDR <= (addr[OFFSET_BITS-1:0] == 0) ? addr : (addr & ~(LINE_SIZE - 1));
+            HBURST <= get_hburst(LINE_SIZE, addr[OFFSET_BITS-1:0]);
 
             HMASTLOCK <= 1'b0;          // Not using locked transfer
             HPROT <= 4'b0011;           // Data access, non-cacheable, privileged, bufferable
@@ -231,13 +272,20 @@ module DCache #(
             HWRITE <= 1'b0;             // Read operation
             
             // Wait for the AHB transfer to complete for each word in the burst
-            for (i = 0; i < LINE_SIZE/4; i = i + 1) begin
+            for (i = 0; i < BURST_LENGTH; i = i + 1) begin
                 @(posedge clk);
                 while (!HREADY) begin
                     @(posedge clk);
                 end
+                // Calculate the correct offset within the cache line
+                integer cache_offset;
+                if (HBURST == 3'b100) begin // Wrapping burst
+                    cache_offset = (addr[OFFSET_BITS-1:2] + i) % (LINE_SIZE/4);
+                end else begin // Incrementing burst
+                    cache_offset = i;
+                end
                 // Store the fetched data in the cache line
-                data_array[index][way][i] <= HRDATA;
+                data_array[index][way][cache_offset] <= HRDATA;
             end
 
             // Update the tag and valid bits
@@ -255,5 +303,29 @@ module DCache #(
             ready <= 1;
         end
     endtask
+
+endmodule
+
+// SRAM module definition
+module SRAM #(
+    parameter ADDR_WIDTH = 10,
+    parameter DATA_WIDTH = 32
+)(
+    input wire clk,
+    input wire [ADDR_WIDTH-1:0] addr,
+    input wire [DATA_WIDTH-1:0] wdata,
+    input wire we,
+    output reg [DATA_WIDTH-1:0] rdata
+);
+
+    // SRAM storage
+    reg [DATA_WIDTH-1:0] mem [(2**ADDR_WIDTH)-1:0];
+
+    always @(posedge clk) begin
+        if (we) begin
+            mem[addr] <= wdata;
+        end
+        rdata <= mem[addr];
+    end
 
 endmodule
