@@ -39,6 +39,9 @@ Ensure that the SRAM modules are appropriately instantiated and controlled withi
 
 ---------------------------------------------------------------------------------------------------------------
 */
+
+`include "../common.vh"
+
 module ICache #(
     parameter CACHE_SIZE = 1024,   // Total cache size in bytes
     parameter LINE_SIZE = 64,      // Line size in bytes

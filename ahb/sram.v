@@ -16,8 +16,7 @@ Address Calculation: Ensure the address calculation accommodates bursts and wrap
 
 */
 
-
-
+`include "../common.vh"
 
 module AHB_SRAM_Slave #(
     parameter BASE_ADDR = 32'h0010_0000, // Default base address       
@@ -110,18 +109,6 @@ module AHB_SRAM_Slave #(
 
 endmodule
 
-// Function to calculate the ceiling of logarithm base 2
-function integer clog2;
-    input integer value;
-    integer result;
-    begin
-        result = 0;
-        while ((2 ** result) < value) begin
-            result = result + 1;
-        end
-        clog2 = result;
-    end
-endfunction
 
 /*
 Yes, 

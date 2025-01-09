@@ -30,6 +30,9 @@ If a miss occurs, the appropriate handle_write_miss or handle_read_miss task is 
 ---------------------------------------------------------------------------------------------------------------
 */
 
+`include "../common.vh"
+
+
 module DCache #(
     parameter CACHE_SIZE = 1024,         // Total cache size in bytes
     parameter LINE_SIZE = 64,            // Line size in bytes
