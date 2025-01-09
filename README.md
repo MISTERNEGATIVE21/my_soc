@@ -61,6 +61,10 @@ User:
 3. 检查 i/d cache, 将2者的主要存储器件，修改为 sram
     - 新建一个 sram module, 和 ahb_sram 不同，这个sram 是cpu内部的。
 
+4. 检查， sram/rom 
+    - 将 memory 的实现，由 register -> sram/rom
+    - 添加 paramter: base_addr & size
+
 ## 1.3. remark
 ### 1.3.1. note
 1. ai 也会出错，记得每次跟新了之后，先手动比较，再update

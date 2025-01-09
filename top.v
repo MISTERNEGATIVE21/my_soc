@@ -128,8 +128,8 @@ module my_soc (
 
     // Instantiate SRAM as AHB slave
     AHB_SRAM_Slave  #(
-        .BASE_ADDR(32'h0000_0000) 
-        .SIZE(4096),
+        .BASE_ADDR(32'h0000_0000), 
+        .SIZE(4096)
     ) sram_slave (
         .HCLK(clk),
         .HRESETn(~reset),
@@ -148,8 +148,8 @@ module my_soc (
 
     // Instantiate ROM as AHB slave
     AHB_ROM_Slave #(
-        .BASE_ADDR(32'h0000_0000) 
-        .SIZE(4096),
+        .BASE_ADDR(32'h0000_0000), 
+        .SIZE(4096)
     ) rom_slave (
         .HCLK(clk),
         .HRESETn(~reset),
