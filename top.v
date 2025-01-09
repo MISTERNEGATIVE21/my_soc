@@ -126,26 +126,6 @@ module my_soc (
         .TDO(TDO)
     );
 
-    // Instantiate SRAM as AHB slave
-    AHB_SRAM_Slave  #(
-        .BASE_ADDR(32'h0000_0000), 
-        .SIZE(4096)
-    ) sram_slave (
-        .HCLK(clk),
-        .HRESETn(~reset),
-        .HADDR(HADDR),
-        .HBURST(HBURST),
-        .HMASTLOCK(HMASTLOCK),
-        .HPROT(HPROT),
-        .HSIZE(HSIZE),
-        .HTRANS(HTRANS),
-        .HWRITE(HWRITE),
-        .HWDATA(HWDATA),
-        .HRDATA(HRDATA_SRAM),
-        .HREADY(HREADY_SRAM),
-        .HRESP(HRESP_SRAM)
-    );
-
     // Instantiate ROM as AHB slave
     AHB_ROM_Slave #(
         .BASE_ADDR(32'h0000_0000), 
@@ -164,6 +144,26 @@ module my_soc (
         .HRDATA(HRDATA_ROM),
         .HREADY(HREADY_ROM),
         .HRESP(HRESP_ROM)
+    );
+
+    // Instantiate SRAM as AHB slave
+    AHB_SRAM_Slave  #(
+        .BASE_ADDR(32'h0010_0000), 
+        .SIZE(4096)
+    ) sram_slave (
+        .HCLK(clk),
+        .HRESETn(~reset),
+        .HADDR(HADDR),
+        .HBURST(HBURST),
+        .HMASTLOCK(HMASTLOCK),
+        .HPROT(HPROT),
+        .HSIZE(HSIZE),
+        .HTRANS(HTRANS),
+        .HWRITE(HWRITE),
+        .HWDATA(HWDATA),
+        .HRDATA(HRDATA_SRAM),
+        .HREADY(HREADY_SRAM),
+        .HRESP(HRESP_SRAM)
     );
 
     // Instantiate AHB-to-APB Bridge as AHB slave and APB master

@@ -64,6 +64,7 @@ User:
 4. 检查， sram/rom 
     - 将 memory 的实现，由 register -> sram/rom
     - 添加 paramter: base_addr & size
+    - 添加 busrt 的支持。 cache miss will generate burst or wrap cmd.
 
 ## 1.3. remark
 ### 1.3.1. note

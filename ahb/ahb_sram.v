@@ -1,11 +1,32 @@
+/*
+
+Burst Types in AHB
+3'b000	SINGLE	Single transfer (non-burst)
+3'b001	INCR	Incrementing burst of unspecified length
+3'b010	WRAP4	4-beat wrapping burst
+3'b011	INCR4	4-beat incrementing burst
+3'b100	WRAP8	8-beat wrapping burst
+3'b101	INCR8	8-beat incrementing burst
+3'b110	WRAP16	16-beat wrapping burst
+3'b111	INCR16	16-beat incrementing burst
+
+Burst Handling: Ensure the module correctly handles HBURST signals.
+Wrap Handling: Ensure the module correctly handles wrapping bursts.
+Address Calculation: Ensure the address calculation accommodates bursts and wrapping.
+
+*/
+
+
+
+
 module AHB_SRAM_Slave #(
-    parameter BASE_ADDR = 32'h0010_0000 // Default base address       
+    parameter BASE_ADDR = 32'h0010_0000, // Default base address       
     parameter SIZE = 256 // Default size is 256 words
 )(
     input wire HCLK,         // AHB system clock
     input wire HRESETn,      // AHB system reset (active low)
     input wire [31:0] HADDR, // AHB address
-    input wire [2:0] HBURST, // Burst type (not used in this example)
+    input wire [2:0] HBURST, // Burst type 
     input wire HMASTLOCK,    // Master lock signal (not used in this example)
     input wire [3:0] HPROT,  // Protection control (not used in this example)
     input wire [2:0] HSIZE,  // Transfer size (not used in this example)
@@ -22,6 +43,7 @@ module AHB_SRAM_Slave #(
     reg [31:0] sram_data_in;
     reg sram_we;
     reg [clog2(SIZE)-1:0] sram_addr;
+    reg [3:0] burst_count; // Burst transfer counter
 
     // New SRAM instance
     sram_ahb #(
@@ -34,29 +56,54 @@ module AHB_SRAM_Slave #(
         .data_out(sram_data_out)
     );
 
+    // Address calculation for wrap bursts
+    always @(*) begin
+        case (HBURST)
+            3'b000: sram_addr = (HADDR - BASE_ADDR) >> 2; // SINGLE
+            3'b001: sram_addr = ((HADDR - BASE_ADDR) >> 2) + burst_count; // INCR
+            3'b010: sram_addr = (((HADDR - BASE_ADDR) >> 2) & ~(4-1)) | ((((HADDR - BASE_ADDR) >> 2) + burst_count) & (4-1)); // WRAP4
+            3'b011: sram_addr = ((HADDR - BASE_ADDR) >> 2) + burst_count; // INCR4
+            3'b100: sram_addr = (((HADDR - BASE_ADDR) >> 2) & ~(8-1)) | ((((HADDR - BASE_ADDR) >> 2) + burst_count) & (8-1)); // WRAP8
+            3'b101: sram_addr = ((HADDR - BASE_ADDR) >> 2) + burst_count; // INCR8
+            3'b110: sram_addr = (((HADDR - BASE_ADDR) >> 2) & ~(16-1)) | ((((HADDR - BASE_ADDR) >> 2) + burst_count) & (16-1)); // WRAP16
+            3'b111: sram_addr = ((HADDR - BASE_ADDR) >> 2) + burst_count; // INCR16
+            default: sram_addr = (HADDR - BASE_ADDR) >> 2;
+        endcase
+    end
+
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
             HRDATA <= 32'b0;
             HREADY <= 1'b1;
             HRESP <= 1'b0;
             sram_we <= 1'b0;
+            burst_count <= 0;
         end else begin
             // Default values
             HREADY <= 1'b1;
             HRESP <= 1'b0; // OKAY response
             sram_we <= 1'b0;
-            sram_addr <= (HADDR - BASE_ADDR) >> 2; // Adjust address width
 
             // Check if the address is within the SRAM range
             if (HTRANS != 2'b00 && HADDR >= BASE_ADDR && HADDR < BASE_ADDR + (SIZE * 4)) begin
                 if (HWRITE) begin
                     // Write operation
-                    sram_data_in <= HWDATA;
-                    sram_we <= 1'b1;
+                    if (HREADY) begin
+                        sram_data_in <= HWDATA;
+                        sram_we <= 1'b1;
+                        burst_count <= burst_count + 1;
+                    end
                 end else begin
                     // Read operation
-                    HRDATA <= sram_data_out;
+                    if (HREADY) begin
+                        HRDATA <= sram_data_out;
+                        burst_count <= burst_count + 1;
+                    end
                 end
+            end else begin
+                burst_count <= 0;
+                HREADY <= 1'b1;
+                HRESP <= 1'b1; // Addr range err response
             end
         end
     end

@@ -71,36 +71,40 @@ module ICache #(
     localparam OFFSET_BITS = $clog2(LINE_SIZE);
     localparam TAG_BITS = 32 - INDEX_BITS - OFFSET_BITS;
 
-    // Cache storage
+    // SRAM storage
+    wire [31:0] cache_data_out;
+    wire [TAG_BITS-1:0] cache_tags_out;
+    reg [31:0] cache_data_in;
+    reg [TAG_BITS-1:0] cache_tags_in;
+    reg cache_data_we, cache_tags_we;
+    reg [INDEX_BITS + $clog2(WAYS)-1:0] cache_data_addr, cache_tags_addr;
+
+    // Cache valid bits
     reg cache_valid [0:NUM_LINES-1][0:WAYS-1];
 
-    // cache implemented by registers, replace by sram
-    // reg [31:0] cache_data [0:NUM_LINES-1][0:WAYS-1][0:LINE_SIZE/4-1]; // 4 bytes per word
-    // reg [TAG_BITS-1:0] cache_tags [0:NUM_LINES-1][0:WAYS-1];
-
-    // Assuming SRAM module is defined with ADDR_WIDTH and DATA_WIDTH parameters
     // SRAM instances for cache_data and cache_tags
     SRAM #(
         .ADDR_WIDTH(INDEX_BITS + $clog2(WAYS)),
         .DATA_WIDTH(LINE_SIZE * 8)
-    ) cache_data (
+    ) cache_data_sram (
         .clk(clk),
-        .addr({index, way}),
-        .wdata(HRDATA), // Data from AHB bus
-        .we(we_cache_data), // Write enable signal
-        .rdata(data_out)
+        .addr(cache_data_addr),
+        .wdata(cache_data_in),
+        .we(cache_data_we),
+        .rdata(cache_data_out)
     );
 
     SRAM #(
         .ADDR_WIDTH(INDEX_BITS + $clog2(WAYS)),
         .DATA_WIDTH(TAG_BITS)
-    ) cache_tags (
+    ) cache_tags_sram (
         .clk(clk),
-        .addr({index, way}),
-        .wdata(tag),
-        .we(we_cache_tags), // Write enable signal
-        .rdata(tag_out)
-    );   
+        .addr(cache_tags_addr),
+        .wdata(cache_tags_in),
+        .we(cache_tags_we),
+        .rdata(cache_tags_out)
+    );
+
 
     // Temporary variables
     wire [INDEX_BITS-1:0] index = addr[OFFSET_BITS + INDEX_BITS - 1 : OFFSET_BITS];
@@ -147,9 +151,11 @@ module ICache #(
                     // Check for hit
                     hit = 0;
                     for (way = 0; way < WAYS; way = way + 1) begin
-                        if (cache_valid[index][way] && cache_tags[index][way] == tag) begin
+                        cache_tags_addr = {index, way};
+                        if (cache_valid[index][way] && cache_tags_out == tag) begin
                             hit = 1;
-                            rdata = cache_data[index][way][offset/4];
+                            cache_data_addr = {index, way};
+                            rdata = cache_data_out;
                             ready = 1; // Data is ready if hit
                         end
                     end
@@ -185,19 +191,22 @@ module ICache #(
                 for (way = 0; way < WAYS; way = way + 1) begin
                     if (!cache_valid[index][way]) begin
                         // Store fetched data in cache line
-                        for (int i = 0; i < LINE_SIZE/4; i = i + 1) begin
-                            cache_data[index][way][i] = HRDATA; // Assuming burst transfers fill this correctly
-                        end
-                        cache_tags[index][way] = tag;
+                        cache_data_we = 1;
+                        cache_tags_we = 1;
+                        cache_data_addr = {index, way};
+                        cache_tags_addr = {index, way};
+                        cache_tags_in = tag;
+                        cache_data_in = HRDATA; // Assuming burst transfers fill this correctly
                         cache_valid[index][way] = 1;
                         break;
                     end
                 end
-                rdata = cache_data[index][way][offset/4];
+                rdata = cache_data_out;
                 ready = 1; // Data is ready after update
                 next_state = IDLE;
             end
         endcase
     end
+
 
 endmodule
