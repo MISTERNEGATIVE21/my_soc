@@ -71,40 +71,35 @@ module ICache #(
     localparam OFFSET_BITS = $clog2(LINE_SIZE);
     localparam TAG_BITS = 32 - INDEX_BITS - OFFSET_BITS;
 
-    // SRAM storage
-    wire [31:0] cache_data_out;
-    wire [TAG_BITS-1:0] cache_tags_out;
-    reg [31:0] cache_data_in;
-    reg [TAG_BITS-1:0] cache_tags_in;
-    reg cache_data_we, cache_tags_we;
-    reg [INDEX_BITS + $clog2(WAYS)-1:0] cache_data_addr, cache_tags_addr;
-
-    // Cache valid bits
-    reg cache_valid [0:NUM_LINES-1][0:WAYS-1];
+    // Cache storage
+        reg cache_valid [0:NUM_LINES-1][0:WAYS-1];
+    reg [TAG_BITS-1:0] cache_tags [0:NUM_LINES-1][0:WAYS-1];
 
     // SRAM instances for cache_data and cache_tags
+    wire [31:0] data_out;
+    wire [TAG_BITS-1:0] tag_out;
+
     SRAM #(
         .ADDR_WIDTH(INDEX_BITS + $clog2(WAYS)),
         .DATA_WIDTH(LINE_SIZE * 8)
-    ) cache_data_sram (
+    ) cache_data (
         .clk(clk),
-        .addr(cache_data_addr),
-        .wdata(cache_data_in),
-        .we(cache_data_we),
-        .rdata(cache_data_out)
+        .addr({index, way}),
+        .wdata(HRDATA), // Data from AHB bus
+        .we(we_cache_data), // Write enable signal
+        .rdata(data_out)
     );
 
     SRAM #(
         .ADDR_WIDTH(INDEX_BITS + $clog2(WAYS)),
         .DATA_WIDTH(TAG_BITS)
-    ) cache_tags_sram (
+    ) cache_tags (
         .clk(clk),
-        .addr(cache_tags_addr),
-        .wdata(cache_tags_in),
-        .we(cache_tags_we),
-        .rdata(cache_tags_out)
-    );
-
+        .addr({index, way}),
+        .wdata(tag),
+        .we(we_cache_tags), // Write enable signal
+        .rdata(tag_out)
+    );   
 
     // Temporary variables
     wire [INDEX_BITS-1:0] index = addr[OFFSET_BITS + INDEX_BITS - 1 : OFFSET_BITS];
@@ -115,6 +110,9 @@ module ICache #(
     // State machine states
     localparam IDLE = 2'b00, FETCH = 2'b01, UPDATE = 2'b10;
     reg [1:0] state, next_state;
+
+    // Burst counter
+    reg [3:0] burst_count;
 
     // Initialize cache
     initial begin
@@ -137,6 +135,7 @@ module ICache #(
             hit <= 0;
             ready <= 0;
             rdata <= 0;
+            burst_count <= 0;
             state <= IDLE;
         end else begin
             state <= next_state;
@@ -151,62 +150,92 @@ module ICache #(
                     // Check for hit
                     hit = 0;
                     for (way = 0; way < WAYS; way = way + 1) begin
-                        cache_tags_addr = {index, way};
-                        if (cache_valid[index][way] && cache_tags_out == tag) begin
+                        if (cache_valid[index][way] && cache_tags[index][way] == tag) begin
                             hit = 1;
-                            cache_data_addr = {index, way};
-                            rdata = cache_data_out;
+                            rdata = data_out[offset/4];
                             ready = 1; // Data is ready if hit
                         end
                     end
                     if (!hit) begin
                         // Cache miss: Fetch from AHB bus
                         ready = 0; // Data is not ready if miss
-                        if (addr[OFFSET_BITS-1:0] == 0) begin
-                            // Aligned address, use incrementing burst
-                            HADDR = addr;
-                            HBURST = 3'b011; // 4-beat incrementing burst
+                        if (addr % LINE_SIZE == 0) begin
+                            HADDR = addr; // Aligned address
+                            HBURST = 3'b111; // 16-beat incrementing burst
                         end else begin
-                            // Unaligned address, use wrapping burst
-                            HADDR = addr & ~(LINE_SIZE - 1);
-                            HBURST = 3'b100; // 4-beat wrapping burst
+                            HADDR = addr & ~(LINE_SIZE - 1); // Align address to cache line boundary
+                            HBURST = 3'b100; // 16-beat wrapping burst
                         end
                         HMASTLOCK = 1'b0; // Not using locked transfer
                         HPROT = 4'b0011; // Data access, non-cacheable, privileged, bufferable
                         HSIZE = 3'b010; // 32-bit word transfer
                         HTRANS = 2'b10; // NONSEQ
                         HWRITE = 0; // Read operation
+                        burst_count = 0;
                         next_state = FETCH;
                     end
                 end
             end
             FETCH: begin
                 if (HREADY) begin
-                    // Data fetched from AHB bus
+                    // Calculate the correct offset within the cache line
+                    integer cache_offset;
+                    if (HBURST == 3'b100) begin // Wrapping burst
+                        cache_offset = (addr[OFFSET_BITS-1:2] + burst_count) % (LINE_SIZE/4);
+                    end else begin // Incrementing burst
+                        cache_offset = burst_count;
+                    end
+
+                    // Store fetched data in cache line
+                    for (way = 0; way < WAYS; way = way + 1) begin
+                        if (!cache_valid[index][way]) begin
+                            cache_data[index][way][cache_offset] = HRDATA;
+                        end
+                    end
+                    burst_count = burst_count + 1;
+                    if (burst_count == 16) begin
                     next_state = UPDATE;
+                    end
                 end
             end
             UPDATE: begin
-                // Update cache with fetched data
+                // Update cache metadata
                 for (way = 0; way < WAYS; way = way + 1) begin
                     if (!cache_valid[index][way]) begin
-                        // Store fetched data in cache line
-                        cache_data_we = 1;
-                        cache_tags_we = 1;
-                        cache_data_addr = {index, way};
-                        cache_tags_addr = {index, way};
-                        cache_tags_in = tag;
-                        cache_data_in = HRDATA; // Assuming burst transfers fill this correctly
+                        cache_tags[index][way] = tag;
                         cache_valid[index][way] = 1;
                         break;
                     end
                 end
-                rdata = cache_data_out;
+                rdata = data_out[offset/4];
                 ready = 1; // Data is ready after update
                 next_state = IDLE;
             end
         endcase
     end
 
+endmodule
+
+// SRAM module definition
+module SRAM #(
+    parameter ADDR_WIDTH = 10,
+    parameter DATA_WIDTH = 32
+)(
+    input wire clk,
+    input wire [ADDR_WIDTH-1:0] addr,
+    input wire [DATA_WIDTH-1:0] wdata,
+    input wire we,
+    output reg [DATA_WIDTH-1:0] rdata
+);
+
+    // SRAM storage
+    reg [DATA_WIDTH-1:0] mem [(2**ADDR_WIDTH)-1:0];
+
+    always @(posedge clk) begin
+        if (we) begin
+            mem[addr] <= wdata;
+        end
+        rdata <= mem[addr];
+    end
 
 endmodule
