@@ -1,6 +1,6 @@
 module my_soc (
     input clk,
-    input reset,
+    input reset_n,
     input apb_clk,
     input apb_resetn,
     input dma_start,
@@ -73,7 +73,7 @@ module my_soc (
     // Instantiate arbiter
     arbiter arb (
         .HCLK(clk),
-        .HRESETn(~reset),
+        .HRESETn(reset_n),
         .cpu_req(HTRANS_CPU[1]),  // CPU request signal
         .dma_req(HTRANS_DMA[1]),  // DMA request signal
         .cpu_grant(cpu_grant),
@@ -107,7 +107,7 @@ module my_soc (
         .DCACHE_WRITE_POLICY("WRITE_BACK")
     ) rv32i_core (
         .clk(clk),
-        .reset(reset),
+        .reset_n(reset_n),
         .HADDR(HADDR_CPU),
         .HBURST(HBURST_CPU),
         .HMASTLOCK(HMASTLOCK_CPU),
@@ -132,7 +132,7 @@ module my_soc (
         .SIZE(4096)
     ) rom_slave (
         .HCLK(clk),
-        .HRESETn(~reset),
+        .HRESETn(reset_n),
         .HADDR(HADDR),
         .HBURST(HBURST),
         .HMASTLOCK(HMASTLOCK),
@@ -152,7 +152,7 @@ module my_soc (
         .SIZE(4096)
     ) sram_slave (
         .HCLK(clk),
-        .HRESETn(~reset),
+        .HRESETn(reset_n),
         .HADDR(HADDR),
         .HBURST(HBURST),
         .HMASTLOCK(HMASTLOCK),
@@ -169,7 +169,7 @@ module my_soc (
     // Instantiate AHB-to-APB Bridge as AHB slave and APB master
     AHB_to_APB_Bridge ahb_to_apb (
         .ahb_clk(clk),
-        .ahb_resetn(~reset),
+        .ahb_resetn(reset_n),
         .HADDR(HADDR),
         .HBURST(HBURST),
         .HMASTLOCK(HMASTLOCK),
@@ -212,7 +212,7 @@ module my_soc (
     // Instantiate DMA as AHB master
     DMA_AHB_Master dma (
         .HCLK(clk),
-        .HRESETn(~reset),
+        .HRESETn(reset_n),
         .start(dma_start),
         .src_addr(dma_src_addr),
         .dest_addr(dma_dest_addr),

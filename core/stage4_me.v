@@ -42,7 +42,7 @@ The MEM_WB_Rd and MEM_WB_RegWrite signals are updated only if mem_stall is not a
 
 module MEM_stage (
     input wire clk,
-    input wire reset,
+    input wire reset_n,
     input wire execute_enable_out, // Updated input from execute stage
     input wire [31:0] EX_MEM_ALUResult,
     input wire [31:0] EX_MEM_WriteData,
@@ -61,8 +61,8 @@ module MEM_stage (
     output reg mem_stall // Updated output to signal pipeline stall
 );
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             MEM_WB_ReadData <= 32'b0;
             MEM_WB_Rd <= 5'b0;
             MEM_WB_RegWrite <= 1'b0;

@@ -2,7 +2,7 @@
 
 module WB_stage (
     input wire clk,
-    input wire reset,
+    input wire reset_n,
     input wire MEM_WB_RegWrite,
     input wire [31:0] MEM_WB_ReadData,
     input wire [4:0] MEM_WB_Rd,
@@ -13,8 +13,8 @@ module WB_stage (
     output reg [31:0] regfile [0:31]
 );
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             // Reset logic
             integer i;
             for (i = 0; i < 32; i = i + 1) begin

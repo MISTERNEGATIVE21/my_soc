@@ -10,7 +10,7 @@ module PipelineRV32ICore_AHB #(
     parameter DCACHE_WRITE_POLICY = "WRITE_BACK"
 )(
     input clk,
-    input reset,
+    input reset_n,  // Active-low reset
     // AHB Interface
     output reg [31:0] HADDR,
     output reg [2:0] HBURST,
@@ -107,8 +107,8 @@ module PipelineRV32ICore_AHB #(
     wire combined_stall = debug_stall || hazard_stall || mem_stall;
 
     // Control signal for fetch_enable
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             fetch_enable <= 1'b0;
         end else if (combined_stall) begin
             fetch_enable <= 1'b0;
@@ -124,7 +124,7 @@ module PipelineRV32ICore_AHB #(
         .WAYS(ICACHE_WAYS)
     ) i_cache (
         .clk(clk),
-        .reset(reset),
+        .reset(~reset_n),
         .addr(PC),
         .valid(1'b1),
         .rdata(i_cache_rdata),
@@ -147,7 +147,7 @@ module PipelineRV32ICore_AHB #(
         .WRITE_POLICY(DCACHE_WRITE_POLICY)
     ) d_cache (
         .clk(clk),
-        .reset(reset),
+        .reset(~reset_n),
         .addr(EX_MEM_ALUResult),
         .wdata(EX_MEM_WriteData),
         .r_w(MemWrite),
@@ -160,7 +160,7 @@ module PipelineRV32ICore_AHB #(
     // Instantiate pipeline stages
     IF_stage if_stage (
         .clk(clk),
-        .reset(reset),
+        .reset(~reset_n),
         .fetch_enable(fetch_enable), // Input signal
         .PC(PC),
         .i_cache_ready(i_cache_ready),
@@ -174,7 +174,7 @@ module PipelineRV32ICore_AHB #(
 
     ID_stage id_stage (
         .clk(clk),
-        .reset(reset),
+        .reset(~reset_n),
         .fetch_enable_out(fetch_enable_out),
         .IF_ID_PC(IF_ID_PC),
         .IF_ID_Instruction(IF_ID_Instruction),
@@ -196,7 +196,7 @@ module PipelineRV32ICore_AHB #(
 
     EX_stage ex_stage (
         .clk(clk),
-        .reset(reset),
+        .reset(~reset_n),
         .decode_enable_out(decode_enable_out),
         .ID_EX_ReadData1(ID_EX_ReadData1),
         .ID_EX_ReadData2(ID_EX_ReadData2),
@@ -215,7 +215,7 @@ module PipelineRV32ICore_AHB #(
 
     MEM_stage mem_stage (
         .clk(clk),
-        .reset(reset),
+        .reset(~reset_n),
         .execute_enable_out(execute_enable_out),
         .EX_MEM_ALUResult(EX_MEM_ALUResult),
         .EX_MEM_WriteData(EX_MEM_WriteData),
@@ -236,7 +236,7 @@ module PipelineRV32ICore_AHB #(
 
     WB_stage wb_stage (
         .clk(clk),
-        .reset(reset),
+        .reset(~reset_n),
         .MEM_WB_RegWrite(MEM_WB_RegWrite),
         .MEM_WB_ReadData(MEM_WB_ReadData),
         .MEM_WB_Rd(MEM_WB_Rd),
@@ -313,7 +313,7 @@ module PipelineRV32ICore_AHB #(
     // Instantiate CPU Debug Logic
     CPU_Debug debug (
         .clk(clk),
-        .reset(reset),
+        .reset(~reset_n),
         .enable(jtag_enable),
         .rd_wr(jtag_rd_wr),
         .address(jtag_address),
@@ -324,10 +324,38 @@ module PipelineRV32ICore_AHB #(
         .halt(debug_stall)
     );
 
+    // Instantiate the cpu_counter module
+    run_counter run_counter (
+        .clk(clk),
+        .reset_n(reset_n),
+        .counter(cpu_counter_value)
+    );
+
+    // Instantiate the CPU counter
+    wire pc_changed = (PC != prev_PC); // Detect PC changes
+    wire [63:0] cpu_counter_value;
+
+    pc_counter pc_counter (
+        .clk(clk),
+        .reset_n(reset_n),
+        .pc_changed(pc_changed),
+        .counter(cpu_counter_value)
+    );
+
+    // Update prev_PC
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
+            prev_PC <= 0;
+        end else begin
+            prev_PC <= PC;
+        end
+    end
+
     // Initial PC
     initial begin
         PC = 0;
-    end
+        prev_PC = 0;
+    end    
 
     // AHB Master Interface (example)
     assign HADDR = PC;
