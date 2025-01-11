@@ -20,7 +20,7 @@ This approach avoids bus contention, reduces latency, and ensures efficient use 
 */
 module IF_stage (
     input wire clk,
-    input wire reset,
+    input wire reset_n,              // Active-low reset signal
     input wire fetch_enable,
     input wire [31:0] PC,
     input wire i_cache_ready,
@@ -34,8 +34,8 @@ module IF_stage (
 
     reg [31:0] next_PC;
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             IF_ID_PC <= 32'b0;
             IF_ID_Instruction <= 32'h00000013; // NOP instruction
             fetch_enable_out <= 1'b0;
@@ -52,7 +52,7 @@ module IF_stage (
                     next_PC <= PC + 4;
                     fetch_enable_out <= 1'b1; // Continue fetching
             end else begin
-                // i Cache miss or not ready: fetch_enable_out set to 0 ; next stage will not advance, so thers is no need to out a stall like d-cacke miss
+                // i Cache miss or not ready: fetch_enable_out set to 0; next stage will not advance, so there's no need to out a stall like d-cache miss
                 fetch_enable_out <= 1'b0;
                 end               
         end else begin
@@ -60,8 +60,8 @@ module IF_stage (
         end
     end
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             next_PC <= 32'b0;
         end else if (!combined_stall && fetch_enable && (i_cache_ready && i_cache_hit)) begin
             next_PC <= PC + 4; // Update PC if not stalling and fetch is enabled

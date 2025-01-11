@@ -12,6 +12,8 @@ enough to prevent issues in subsequent stages.
 */
 
 module HazardDetectionUnit (
+    input wire clk,                // Clock signal
+    input wire reset_n,            // Active-low reset signal
     input wire [4:0] ID_EX_Rs1,
     input wire [4:0] ID_EX_Rs2,
     input wire [4:0] EX_MEM_Rd,
@@ -21,12 +23,16 @@ module HazardDetectionUnit (
     output reg hazard_stall
 );
 
-    always @(*) begin
-        if ((EX_MEM_RegWrite && (EX_MEM_Rd != 0) && ((EX_MEM_Rd == ID_EX_Rs1) || (EX_MEM_Rd == ID_EX_Rs2))) ||
-            (MEM_WB_RegWrite && (MEM_WB_Rd != 0) && ((MEM_WB_Rd == ID_EX_Rs1) || (MEM_WB_Rd == ID_EX_Rs2)))) begin
-            hazard_stall = 1;
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
+            hazard_stall <= 0;
         end else begin
-            hazard_stall = 0;
+            if ((EX_MEM_RegWrite && (EX_MEM_Rd != 0) && ((EX_MEM_Rd == ID_EX_Rs1) || (EX_MEM_Rd == ID_EX_Rs2))) ||
+                (MEM_WB_RegWrite && (MEM_WB_Rd != 0) && ((MEM_WB_Rd == ID_EX_Rs1) || (MEM_WB_Rd == ID_EX_Rs2)))) begin
+                hazard_stall <= 1;
+            end else begin
+                hazard_stall <= 0;
+            end
         end
     end
 endmodule

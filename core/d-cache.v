@@ -50,7 +50,7 @@ module DCache #(
     parameter WRITE_POLICY = "WRITE_BACK" // Write policy: "WRITE_BACK" or "WRITE_THROUGH"
 )(
     input wire clk,
-    input wire reset,
+    input wire reset_n,                 // Active-low reset
     input wire [31:0] addr,
     input wire [31:0] wdata,
     input wire r_w,                      // Read/Write (1=Write, 0=Read)
@@ -153,8 +153,8 @@ module DCache #(
     end
 
     // Cache operation
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             ready <= 0;
             hit <= 0;
         end else if (valid) begin

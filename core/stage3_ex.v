@@ -18,7 +18,7 @@ If execute_enable is part of a more complex control logic that takes into accoun
 
 module EX_stage (
     input wire clk,
-    input wire reset,
+    input wire reset_n,                // Active-low reset signal
     input wire decode_enable_out,
     input wire [31:0] ID_EX_ReadData1,
     input wire [31:0] ID_EX_ReadData2,
@@ -27,12 +27,12 @@ module EX_stage (
     input wire [6:0] ID_EX_Funct7,
     input wire [2:0] ID_EX_Funct3,
     input wire [3:0] ALUControl,
-    input wire combined_stall, // New input for combined stall signal
+    input wire combined_stall,         // New input for combined stall signal
     output reg [31:0] EX_MEM_ALUResult,
     output reg [31:0] EX_MEM_WriteData,
     output reg [4:0] EX_MEM_Rd,
     output reg EX_MEM_RegWrite,
-    output reg execute_enable_out // Output execute_enable signal
+    output reg execute_enable_out      // Output execute_enable signal
 );
 
     wire [31:0] ALUResult;
@@ -47,8 +47,8 @@ module EX_stage (
         .Zero(Zero)
     );
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             EX_MEM_ALUResult <= 32'b0;
             EX_MEM_WriteData <= 32'b0;
             EX_MEM_Rd <= 5'b0;

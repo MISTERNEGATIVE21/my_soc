@@ -1,3 +1,7 @@
+
+`include "addrmap.v"
+
+
 module my_soc (
     input clk,
     input reset_n,
@@ -58,16 +62,20 @@ module my_soc (
     wire HRESP;
 
     // Address decoder signals
-    wire rom_sel;
-    wire sram_sel;
+    wire ahb_rom_sel;
+    wire ahb_sram_sel;
     wire apb_bridge_sel;
+    wire apb_uart_sel;
+    wire ahb_dma_sel;
 
     // Instantiate address decoder
     ahb_decoder decoder (
         .HADDR(HADDR),
-        .rom_sel(rom_sel),
-        .sram_sel(sram_sel),
+        .ahb_rom_sel(ahb_rom_sel),
+        .ahb_sram_sel(ahb_sram_sel),
         .apb_bridge_sel(apb_bridge_sel)
+        .apb_uart_sel(apb_uart_sel)
+        .ahb_dma_sel(ahb_dma_sel)      
     );
 
     // Instantiate arbiter
@@ -128,8 +136,8 @@ module my_soc (
 
     // Instantiate ROM as AHB slave
     AHB_ROM_Slave #(
-        .BASE_ADDR(32'h0000_0000), 
-        .SIZE(4096)
+        .BASE_ADDR(32'ROM_START_ADDR), 
+        .SIZE(ROM_SIZE/4)
     ) rom_slave (
         .HCLK(clk),
         .HRESETn(reset_n),
@@ -148,8 +156,8 @@ module my_soc (
 
     // Instantiate SRAM as AHB slave
     AHB_SRAM_Slave  #(
-        .BASE_ADDR(32'h0010_0000), 
-        .SIZE(4096)
+        .BASE_ADDR(32'SRAM_START_ADDR), 
+        .SIZE(SRAM_SIZE/4)
     ) sram_slave (
         .HCLK(clk),
         .HRESETn(reset_n),
@@ -197,7 +205,7 @@ module my_soc (
     UART_APB uart (
         .PCLK(apb_clk),
         .PRESETn(apb_resetn),
-        .PSEL(PSEL && (PADDR == 32'h0020_0000 || PADDR == 32'h0020_0004)),
+        .PSEL(apb_uart_sel),
         .PENABLE(PENABLE),
         .PWRITE(PWRITE),
         .PADDR(PADDR),
@@ -210,13 +218,13 @@ module my_soc (
     );
 
     // Instantiate DMA as AHB master
-    DMA_AHB_Master dma (
+    DMA_AHB_Master #(
+        parameter ADDR_WIDTH = 32,
+        parameter DATA_WIDTH = 32,
+        parameter BASE_ADDR  = 32'h0020_0000
+    ) dma (
         .HCLK(clk),
         .HRESETn(reset_n),
-        .start(dma_start),
-        .src_addr(dma_src_addr),
-        .dest_addr(dma_dest_addr),
-        .transfer_size(dma_transfer_size),
         .done(dma_done),
         .HADDR(HADDR_DMA),
         .HBURST(HBURST_DMA),

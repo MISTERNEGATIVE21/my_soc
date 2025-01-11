@@ -30,13 +30,16 @@ This implementation ensures that the ALU module can perform a variety of arithme
 */
 
 module ALU (
-    input [31:0] A,        // First operand
-    input [31:0] B,        // Second operand
-    input [3:0] ALUControl, // Control signal indicating the operation to perform
+    input wire clk,           // Clock signal
+    input wire reset_n,       // Active-low reset signal
+    input [31:0] A,           // First operand
+    input [31:0] B,           // Second operand
+    input [3:0] ALUControl,   // Control signal indicating the operation to perform
     output reg [31:0] Result, // Result of the operation
-    output Zero            // Zero flag, indicates if the result is zero
+    output Zero               // Zero flag, indicates if the result is zero
 );
 
+    // ALU operation logic
     always @(*) begin
         case (ALUControl)
             4'b0010: Result = A + B;          // ADD
@@ -55,5 +58,12 @@ module ALU (
 
     // Zero flag is high if the result is zero
     assign Zero = (Result == 0) ? 1'b1 : 1'b0;
+
+    // Reset logic to initialize Result and Zero
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
+            Result <= 32'b0;
+        end
+    end
 
 endmodule

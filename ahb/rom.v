@@ -25,7 +25,7 @@ module AHB_ROM_Slave #(
 
     // Internal signals
     wire [31:0] rom_data_out;
-    reg [clog2(SIZE)-1:0] rom_addr;
+    reg [$clog2(SIZE)-1:0] rom_addr;
     reg [3:0] burst_count; // Burst transfer counter
 
     // Instantiate the new ROM module

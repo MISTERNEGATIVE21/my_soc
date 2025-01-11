@@ -21,15 +21,18 @@ This control unit will generate the appropriate control signals based on the opc
 */
 
 module ControlUnit (
-    input [6:0] opcode,
-    output reg [1:0] ALUOp,
-    output reg MemRead,
-    output reg MemtoReg,
-    output reg MemWrite,
-    output reg ALUSrc,
-    output reg RegWrite
+    input wire clk,          // Clock signal
+    input wire reset_n,      // Active-low reset signal
+    input [6:0] opcode,      // Opcode input
+    output reg [1:0] ALUOp,  // ALU operation control signal
+    output reg MemRead,      // Memory read control signal
+    output reg MemtoReg,     // Memory to register control signal
+    output reg MemWrite,     // Memory write control signal
+    output reg ALUSrc,       // ALU source control signal
+    output reg RegWrite      // Register write control signal
 );
 
+    // Control signal logic based on opcode
     always @(*) begin
         case (opcode)
             7'b0110011: begin // R-type
@@ -81,6 +84,18 @@ module ControlUnit (
                 RegWrite = 0;
             end
         endcase
+    end
+
+    // Reset logic to initialize control signals
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
+            ALUOp <= 2'b00;
+            MemRead <= 0;
+            MemtoReg <= 0;
+            MemWrite <= 0;
+            ALUSrc <= 0;
+            RegWrite <= 0;
+        end
     end
 
 endmodule

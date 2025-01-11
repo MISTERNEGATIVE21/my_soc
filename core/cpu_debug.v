@@ -1,7 +1,7 @@
 
 module CPU_Debug (
     input wire clk,
-    input wire reset,
+    input wire reset_n,     // Active-low reset
     input wire enable,
     input wire rd_wr,
     input wire [31:0] address,
@@ -17,8 +17,8 @@ module CPU_Debug (
     reg [31:0] pc; // Program counter
 
     // Memory and register access
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             halt <= 0;
             pc <= 0;
         end else if (enable) begin

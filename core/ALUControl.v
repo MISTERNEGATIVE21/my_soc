@@ -31,12 +31,15 @@ This implementation ensures that the ALUControlUnit generates the appropriate AL
 */
 
 module ALUControlUnit (
-    input [1:0] ALUOp,
-    input [6:0] Funct7,
-    input [2:0] Funct3,
-    output reg [3:0] ALUControl
+    input wire clk,           // Clock signal
+    input wire reset_n,       // Active-low reset signal
+    input [1:0] ALUOp,        // ALU operation code
+    input [6:0] Funct7,       // Function code 7 bits
+    input [2:0] Funct3,       // Function code 3 bits
+    output reg [3:0] ALUControl // ALU control signal
 );
 
+    // ALU control logic
     always @(*) begin
         case (ALUOp)
             2'b00: begin // Load/Store instructions
@@ -89,6 +92,13 @@ module ALUControlUnit (
             end
             default: ALUControl = 4'b0000; // Default case
         endcase
+    end
+
+    // Reset logic to initialize ALUControl
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
+            ALUControl <= 4'b0000; // Default reset value
+        end
     end
 
 endmodule

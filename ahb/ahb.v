@@ -248,6 +248,36 @@ module ahb_decoder(
 
 endmodule
 
+module ahb_decoder(
+    input wire [31:0] HADDR,
+    output reg rom_sel,
+    output reg sram_sel,
+    output reg apb_bridge_sel,
+    output reg dma_sel  // Adding DMA select signal
+);
+
+    always @(*) begin
+        // Default all select signals to 0
+        rom_sel = 0;
+        sram_sel = 0;
+        apb_bridge_sel = 0;
+        dma_sel = 0;  // Initialize DMA select signal to 0
+
+        // Address decoding
+        if (HADDR >= 32'h0000_0000 && HADDR < 32'h0000_8000) begin
+            rom_sel = 1;
+        end else if (HADDR >= 32'h0010_0000 && HADDR < 32'h0020_0000) begin
+            sram_sel = 1;
+        end else if (HADDR >= 32'h0100_0000 && HADDR < 32'h0100_0010) begin
+            dma_sel = 1;  // Select DMA control registers
+        end else if (HADDR >= 32'h0020_0010 && HADDR < 32'h0100_0000) begin
+            apb_bridge_sel = 1;
+        end
+    end
+
+endmodule
+
+
 /* 
 Explanation:
 Clock Domains: The AHB interface operates on ahb_clk, while the APB interface operates on apb_clk.

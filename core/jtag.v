@@ -3,6 +3,7 @@ module JTAG_Interface (
     input wire TMS,
     input wire TDI,
     output wire TDO,
+    input wire reset_n,              // Active-low reset signal
     output reg [31:0] address,
     output reg [31:0] data_out,
     input wire [31:0] data_in,
@@ -35,8 +36,10 @@ module JTAG_Interface (
     reg [31:0] shift_register;
 
     // TAP state machine
-    always @(posedge TCK or posedge TMS) begin
-        if (TMS) begin
+    always @(posedge TCK or negedge reset_n) begin
+        if (~reset_n) begin
+            state <= TEST_LOGIC_RESET;
+        end else if (TMS) begin
             state <= next_state;
         end else begin
             case (state)
@@ -62,14 +65,25 @@ module JTAG_Interface (
     end
 
     // Shift register logic
-    always @(posedge TCK) begin
-        if (state == SHIFT_DR || state == SHIFT_IR) begin
+    always @(posedge TCK or negedge reset_n) begin
+        if (~reset_n) begin
+            shift_register <= 32'b0;
+        end else if (state == SHIFT_DR || state == SHIFT_IR) begin
             shift_register <= {TDI, shift_register[31:1]};
         end
     end
 
     // Update instruction and data
-    always @(negedge TCK) begin
+    always @(negedge TCK or negedge reset_n) begin
+        if (~reset_n) begin
+            instruction <= 5'b0;
+            address <= 32'b0;
+            data_out <= 32'b0;
+            rd_wr <= 1'b0;
+            enable <= 1'b0;
+            step <= 1'b0;
+            run <= 1'b0;
+        end else begin
         if (state == UPDATE_IR) begin
             instruction <= shift_register[4:0];
         end
@@ -84,6 +98,7 @@ module JTAG_Interface (
                 default: ;
             endcase
         end
+    end
     end
 
     // Output data

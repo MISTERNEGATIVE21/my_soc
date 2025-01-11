@@ -7,7 +7,7 @@ module ID_stage (
     input wire [31:0] ReadData1,
     input wire [31:0] ReadData2,
     input wire [31:0] Immediate,
-    input wire combined_stall, // New input for combined stall signal
+    input wire combined_stall,         // New input for combined stall signal
     output reg [31:0] ID_EX_PC,
     output reg [31:0] ID_EX_ReadData1,
     output reg [31:0] ID_EX_ReadData2,
@@ -17,11 +17,11 @@ module ID_stage (
     output reg [4:0] ID_EX_Rd,
     output reg [6:0] ID_EX_Funct7,
     output reg [2:0] ID_EX_Funct3,
-    output reg decode_enable_out // Output decode_enable_out signal
+    output reg decode_enable_out       // Output decode_enable_out signal
 );
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             ID_EX_PC <= 32'b0;
             ID_EX_ReadData1 <= 32'b0;
             ID_EX_ReadData2 <= 32'b0;

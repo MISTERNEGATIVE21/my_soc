@@ -41,7 +41,7 @@ module AHB_SRAM_Slave #(
     wire [31:0] sram_data_out;
     reg [31:0] sram_data_in;
     reg sram_we;
-    reg [clog2(SIZE)-1:0] sram_addr;
+    reg [$clog2(SIZE)-1:0] sram_addr;
     reg [3:0] burst_count; // Burst transfer counter
 
     // New SRAM instance

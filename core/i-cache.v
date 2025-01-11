@@ -48,7 +48,7 @@ module ICache #(
     parameter WAYS = 1             // Number of ways (associativity)
 )(
     input wire clk,
-    input wire reset,
+    input wire reset_n,  // Active-low reset
     input wire [31:0] addr,
     input wire valid,
     output reg [31:0] rdata,
@@ -150,8 +150,8 @@ module ICache #(
         state = IDLE;
     end
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk or negedge reset_n) begin
+        if (~reset_n) begin
             // Reset logic
             for (way = 0; way < WAYS; way = way + 1) begin
                 for (integer i = 0; i < NUM_LINES; i = i + 1) begin
