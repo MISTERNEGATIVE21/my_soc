@@ -1,3 +1,40 @@
+/*
+When designing a module like DMA that acts as both an AHB slave and an AHB master, 
+there are several important considerations to ensure proper functionality and avoid conflicts. Here are some key points to take care of:
+
+1. Separate AHB Interfaces
+Ensure that the DMA has distinct and separate interfaces for its AHB slave and AHB master roles. 
+This means having separate signals and logic for handling incoming requests (slave) and outgoing requests (master).
+
+2. Address Decoding
+Ensure proper address decoding for the DMA's control registers. 
+As an AHB slave, the DMA needs to decode incoming addresses to determine if they are targeting its control registers.
+
+3. Arbitration and Bus Control
+When the DMA needs to act as an AHB master, it must request control of the bus. 
+This typically involves an arbiter that grants bus access to one master at a time. Ensure that the arbiter correctly handles requests from both the CPU and the DMA.
+
+4. State Management
+Properly manage the state transitions within the DMA to handle both roles. 
+For example, manage the transitions between idle, read, write, and complete states within the DMA logic.
+
+5. Synchronization
+Ensure proper synchronization between the AHB slave and master interfaces, 
+especially if they operate on different clocks or have different timing constraints.
+
+6. Handling Responses
+As an AHB master, the DMA must handle responses from the slave devices it communicates with. 
+This includes managing ready, response, and error signals.
+
+7. Configuration and Control
+Provide an interface for configuring and controlling the DMA operation through its AHB slave interface. 
+This typically includes control registers for start, source address, destination address, transfer size, etc.
+
+8. Error Handling
+Implement error handling mechanisms to manage and respond to bus errors or invalid operations.
+
+*/
+
 
 
 
@@ -25,8 +62,7 @@ module DMA_AHB_Master #(
     output reg master_HWRITE,
     input wire [DATA_WIDTH-1:0] master_HRDATA,
     input wire master_HREADY,
-    input wire master_HRESP,
-    output reg done
+    input wire master_HRESP
 );
 
     // Control registers
@@ -34,6 +70,7 @@ module DMA_AHB_Master #(
     reg [ADDR_WIDTH-1:0] src_addr;
     reg [ADDR_WIDTH-1:0] dest_addr;
     reg [31:0] transfer_size;
+    reg done;  // Internal register for done signal
 
     // Register addresses (offsets from BASE_ADDR)
     localparam START_ADDR        = BASE_ADDR;

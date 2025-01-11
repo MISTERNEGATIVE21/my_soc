@@ -73,8 +73,8 @@ module my_soc (
         .HADDR(HADDR),
         .ahb_rom_sel(ahb_rom_sel),
         .ahb_sram_sel(ahb_sram_sel),
-        .apb_bridge_sel(apb_bridge_sel)
-        .apb_uart_sel(apb_uart_sel)
+        .apb_bridge_sel(apb_bridge_sel),
+        .apb_uart_sel(apb_uart_sel),
         .ahb_dma_sel(ahb_dma_sel)      
     );
 
@@ -136,8 +136,8 @@ module my_soc (
 
     // Instantiate ROM as AHB slave
     AHB_ROM_Slave #(
-        .BASE_ADDR(32'ROM_START_ADDR), 
-        .SIZE(ROM_SIZE/4)
+        .BASE_ADDR(`ROM_START_ADDR), 
+        .SIZE(`ROM_SIZE / 4)
     ) rom_slave (
         .HCLK(clk),
         .HRESETn(reset_n),
@@ -155,9 +155,9 @@ module my_soc (
     );
 
     // Instantiate SRAM as AHB slave
-    AHB_SRAM_Slave  #(
-        .BASE_ADDR(32'SRAM_START_ADDR), 
-        .SIZE(SRAM_SIZE/4)
+    AHB_SRAM_Slave #(
+        .BASE_ADDR(`SRAM_START_ADDR), 
+        .SIZE(`SRAM_SIZE / 4)
     ) sram_slave (
         .HCLK(clk),
         .HRESETn(reset_n),
@@ -219,24 +219,28 @@ module my_soc (
 
     // Instantiate DMA as AHB master
     DMA_AHB_Master #(
-        parameter ADDR_WIDTH = 32,
-        parameter DATA_WIDTH = 32,
-        parameter BASE_ADDR  = 32'h0020_0000
+        .ADDR_WIDTH(32),
+        .DATA_WIDTH(32),
+        .BASE_ADDR(`DMA_START_ADDR)
     ) dma (
         .HCLK(clk),
         .HRESETn(reset_n),
-        .done(dma_done),
-        .HADDR(HADDR_DMA),
-        .HBURST(HBURST_DMA),
-        .HMASTLOCK(HMASTLOCK_DMA),
-        .HPROT(HPROT_DMA),
-        .HSIZE(HSIZE_DMA),
-        .HTRANS(HTRANS_DMA),
-        .HWDATA(HWDATA_DMA),
-        .HWRITE(HWRITE_DMA),
-        .HRDATA(HRDATA_DMA),
-        .HREADY(HREADY_DMA),
-        .HRESP(HRESP_DMA)
+        .HADDR(HADDR),
+        .HTRANS(HTRANS),
+        .HWRITE(HWRITE),
+        .HWDATA(HWDATA),
+        .HRDATA(HRDATA),
+        .master_HADDR(HADDR_DMA),
+        .master_HBURST(HBURST_DMA),
+        .master_HMASTLOCK(HMASTLOCK_DMA),
+        .master_HPROT(HPROT_DMA),
+        .master_HSIZE(HSIZE_DMA),
+        .master_HTRANS(HTRANS_DMA),
+        .master_HWDATA(HWDATA_DMA),
+        .master_HWRITE(HWRITE_DMA),
+        .master_HRDATA(HRDATA_DMA),
+        .master_HREADY(HREADY_DMA),
+        .master_HRESP(HRESP_DMA)
     );
 
 endmodule
