@@ -41,7 +41,7 @@ Implement error handling mechanisms to manage and respond to bus errors or inval
 module DMA_AHB_Master #(
     parameter ADDR_WIDTH = 32,
     parameter DATA_WIDTH = 32,
-    parameter BASE_ADDR  = 32'h0020_0000
+    parameter BASE_ADDR  = 32'h0000_0000
 )(
     input wire HCLK,
     input wire HRESETn,
@@ -77,6 +77,7 @@ module DMA_AHB_Master #(
     localparam SRC_ADDR_ADDR     = BASE_ADDR + 4;
     localparam DEST_ADDR_ADDR    = BASE_ADDR + 8;
     localparam TRANSFER_SIZE_ADDR = BASE_ADDR + 12;
+    localparam DONE_ADDR         = BASE_ADDR + 16; // Address for the done signal
 
     // FSM states
     localparam [1:0]
@@ -196,6 +197,7 @@ module DMA_AHB_Master #(
                     SRC_ADDR_ADDR:     HRDATA <= src_addr;
                     DEST_ADDR_ADDR:    HRDATA <= dest_addr;
                     TRANSFER_SIZE_ADDR: HRDATA <= transfer_size;
+                    DONE_ADDR:         HRDATA <= {31'b0, done}; // Read done signal
                     default:           HRDATA <= 32'b0;
                 endcase
             end

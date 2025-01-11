@@ -325,7 +325,7 @@ module PipelineRV32ICore_AHB #(
     );
 
     // Instantiate the cpu_counter module
-    run_counter run_counter (
+    clk_counter clk_counter (
         .clk(clk),
         .reset_n(reset_n),
         .counter(cpu_counter_value)

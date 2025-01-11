@@ -7,7 +7,11 @@ Signal Synchronization: Signals from the AHB domain are synchronized to the APB 
 APB Interface Logic: The APB interface logic handles the transfer of data between AHB and APB domains, ensuring proper setup and access phases. 
 
 */
-module AHB_to_APB_Bridge (
+module AHB_to_APB_Bridge #(
+    parameter ADDR_WIDTH = 32,
+    parameter DATA_WIDTH = 32,
+    parameter BASE_ADDR  = 'BRIDGE_START_ADDR
+)(
     // AHB Slave Interface
     input wire ahb_clk,
     input wire ahb_resetn,

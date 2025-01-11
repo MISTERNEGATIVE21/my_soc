@@ -1,17 +1,11 @@
 
 `include "addrmap.v"
 
-
 module my_soc (
     input clk,
     input reset_n,
     input apb_clk,
     input apb_resetn,
-    input dma_start,
-    input [31:0] dma_src_addr,
-    input [31:0] dma_dest_addr,
-    input [31:0] dma_transfer_size,
-    output dma_done,
     // UART signals
     output uart_tx,
     input uart_rx,

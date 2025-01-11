@@ -19,7 +19,7 @@ Address Calculation: Ensure the address calculation accommodates bursts and wrap
 `include "../common.vh"
 
 module AHB_SRAM_Slave #(
-    parameter BASE_ADDR = 32'h0010_0000, // Default base address       
+    parameter BASE_ADDR = 32'h0000_0000, // Default base address       
     parameter SIZE = 256 // Default size is 256 words
 )(
     input wire HCLK,         // AHB system clock

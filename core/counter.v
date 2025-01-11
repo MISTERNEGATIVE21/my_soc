@@ -1,4 +1,4 @@
-module run_counter (
+module clk_counter (
     input wire clk,       // Clock input
     input wire reset_n,   // Active-low reset
     output reg [63:0] counter // 64-bit counter output
