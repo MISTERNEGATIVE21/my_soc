@@ -5,7 +5,6 @@ Parameters:
 The CACHE_SIZE, LINE_SIZE, WAYS, and WRITE_POLICY parameters configure the cache size, line size, associativity, and write policy.
 
 Derived Parameters: The NUM_LINES, INDEX_BITS, OFFSET_BITS, and TAG_BITS are derived based on the cache configuration.
-
 Cache Structures: 
 The cache includes tag, data, valid, and dirty arrays.
 
@@ -27,6 +26,17 @@ The handle_read_miss task remains the same, using burst transfers to fetch cache
 Cache Operations: 
 The always block continues to handle cache operations, including checking for hits and handling misses. 
 If a miss occurs, the appropriate handle_write_miss or handle_read_miss task is called to fetch the necessary data from the AHB-slave SRAM using burst transfers.
+
+
+Cache Organization
+Direct-Mapped Cache:
+This cache module uses single-way (1-way) associativity, which means it is a direct-mapped cache. 
+In a direct-mapped cache, each memory address maps to a fixed position in the cache.
+
+Replacement Strategy:
+In this cache design, due to the use of direct-mapped organization, there is no issue with replacement strategy. 
+Each memory address has a fixed position in the cache. When new data needs to be loaded into the cache, 
+it directly overwrites the old data at that position.
 ---------------------------------------------------------------------------------------------------------------
 */
 
