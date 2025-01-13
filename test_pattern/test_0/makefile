@@ -17,7 +17,7 @@ ASFLAGS = -march=rv32i -mabi=ilp32 -c
 LDFLAGS = -nostartfiles -nostdlib -T linker.ld -march=rv32i -mabi=ilp32
 
 # Default rule to build the target
-all: $(TARGET) rom.bin sram.bin
+all: $(TARGET) rom.bin sram.bin copy
 
 # Rule to assemble the source file into an object file
 %.o: %.s
@@ -34,8 +34,16 @@ rom.bin: $(TARGET)
 sram.bin: $(TARGET)
     $(OBJCOPY) -O binary --only-section=.data --only-section=.bss $(TARGET) $@
 
+# Rule to copy the .bin files to the specified directory
+copy: rom.bin sram.bin
+    if [ -f ../ram_init_file/rom.bin ]; then rm ../ram_init_file/rom.bin; fi
+    if [ -f ../ram_init_file/sram.bin ]; then rm ../ram_init_file/sram.bin; fi
+    cp rom.bin ../ram_init_file/
+    cp sram.bin ../ram_init_file/
+
 # Clean rule to remove generated files
 clean:
     rm -f $(SRC:.s=.o) $(TARGET) rom.bin sram.bin
+    rm -f ../ram_init_file/rom.bin ../ram_init_file/sram.bin
 
-.PHONY: all clean
+.PHONY: all clean copy

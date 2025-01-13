@@ -5,7 +5,28 @@ module testbench;
     // Declare inputs as regs and outputs as wires
     reg clk;
     reg reset_n;
-    // Declare other necessary signals if required
+    reg apb_clk;
+    reg apb_resetn;
+    wire uart_tx;
+    reg uart_rx;
+    reg TCK;
+    reg TMS;
+    reg TDI;
+    wire TDO;
+
+    // Instantiate my_soc
+    my_soc uut (
+        .clk(clk),
+        .reset_n(reset_n),
+        .apb_clk(apb_clk),
+        .apb_resetn(apb_resetn),
+        .uart_tx(uart_tx),
+        .uart_rx(uart_rx),
+        .TCK(TCK),
+        .TMS(TMS),
+        .TDI(TDI),
+        .TDO(TDO)
+    );
 
     // Clock generation
     initial begin
@@ -13,17 +34,28 @@ module testbench;
         forever #5 clk = ~clk; // 10ns period (100MHz clock)
     end
 
+    // APB Clock generation
+    initial begin
+        apb_clk = 0;
+        forever #10 apb_clk = ~apb_clk; // 20ns period (50MHz clock)
+    end
+
     // Testbench initial block
     initial begin
         // Initialize inputs
         reset_n = 0;
+        apb_resetn = 0;
+        uart_rx = 1;
+        TCK = 0;
+        TMS = 0;
+        TDI = 0;
 
         // Apply reset
         #10;
         reset_n = 1;
+        apb_resetn = 1;
 
-        // Add stimulus here
-        // e.g., setting inputs, applying test vectors
+        // Add more stimulus here if needed
 
         // Run the simulation for a specific time
         #1000;

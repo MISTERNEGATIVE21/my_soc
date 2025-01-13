@@ -10,7 +10,7 @@ module ahb_decoder(
     output reg ahb_sram_sel,
     output reg apb_bridge_sel,
     output reg apb_uart_sel, 
-    output reg ahb_dma_sel  // Adding DMA select signal
+    output reg ahb_dma_sel  // DMA select signal
 );
 
     always @(*) begin
@@ -22,17 +22,17 @@ module ahb_decoder(
         ahb_dma_sel = 0;  // Initialize DMA select signal to 0
 
         // Address decoding
-        if (HADDR >= ROM_START_ADDR && HADDR < (ROM_START_ADDR + ROM_SIZE)) begin
+        if (HADDR >= `ROM_START_ADDR && HADDR < (`ROM_START_ADDR + `ROM_SIZE)) begin
             ahb_rom_sel = 1;
-        end else if (HADDR >= SRAM_START_ADDR && HADDR < (SRAM_START_ADDR + SRAM_SIZE)) begin
+        end else if (HADDR >= `SRAM_START_ADDR && HADDR < (`SRAM_START_ADDR + `SRAM_SIZE)) begin
             ahb_sram_sel = 1;
-        end else if (HADDR >= BRIDGE_START_ADDR && HADDR < (BRIDGE_START_ADDR + BRIDGE_SIZE)) begin
-            apb_bridge_sel = 1;  // Select DMA control registers
-            if (HADDR >= UART_START_ADDR && HADDR < (UART_START_ADDR + UART_SIZE)) begin
+        end else if (HADDR >= `DMA_START_ADDR && HADDR < (`DMA_START_ADDR + `DMA_SIZE)) begin
+            ahb_dma_sel = 1;
+        end else if (HADDR >= `BRIDGE_START_ADDR && HADDR < (`BRIDGE_START_ADDR + `BRIDGE_SIZE)) begin
+            apb_bridge_sel = 1;
+            if (HADDR >= `UART_START_ADDR && HADDR < (`UART_START_ADDR + `UART_SIZE)) begin
                 apb_uart_sel = 1;
             end 
-        end else if (HADDR >= DMA_START_ADDR && HADDR < (DMA_START_ADDR + DMA_SIZE)) begin
-            ahb_dma_sel = 1;
         end
     end
 

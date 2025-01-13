@@ -1,5 +1,7 @@
 # 1. my_soc
-my soc rv32I prj from github Ai ------ copilot
+my soc rv32I prj with github Ai ------ ' copilot'
+
+basci Scenario Q & A.
 
 Example Scenario
 Let's say you have a GitHub repository named my_soc under your GitHub username hankonly.
@@ -17,55 +19,77 @@ User:
 
 4. By providing the URL, I can directly refer to your repository and assist you with specific files or issues you have.Feel free to try it out, and let me know how I can help you with your my_soc project!
 
+## feature
+**core**
+   - 5stage-pipeline
+   - instructions
+    - jal
+    - rv32i
+  - i/d cache
+  - interrupt & exception ?
+  - debug
+    - jtage & cpu_debug 
+  - just stall for hazard handle; no forward ; not branch-prediction
+  - csr 
+    - run couter ?
+    - pc couter ?
+  
+**bus**
+  - ahb
+    - master 
+      - cpu core
+      - **dma**
+    - slave
+      - rom
+      - sram
+      - **dma**
+      - ahb2apb_bridge
+        - uart   
+
+
 ## 1.1. plan
-|version|feature|done| verifie|note|
-|-------|-------|-|-|---------|
-|v0.01|1. 5stage rv32i|y|-|Insert bubble to hazard|
-|v0.01|2. ahb bus|y|-|-|
-|v0.01|3. ahb-2-apb bridge|y|-|-|
-|v0.02|code review to problme resoled|y|-|-|
+|version|feature|done| verified|note|
+|-----|-------------------------------------------|-|-|---------|
+|v0.01|1. 5Stage-Pipelie-AHB RV32I core|y|-|Insert bubble to hazard|
+|v0.01|2. AHB bus & ahb-sram & ahb-rom |y|-|最小系统|
+|v0.01|3. add a ahb2apb bridge|y|-|-|
+|v0.01|4. add a uart as apb slave|y|-|-|
+|v0.01|5. add a dma as ahb master & slave|y|-|-|
+|v0.01|6. add a jtag-interface & cpu_debug to core |y|-|-|
+|v0.01|7. remove i/d memory to i/d cache|y|-|-|
+|v0.02|code review|y|-|-|
 |v0.03|verify by simulation|n|-|-|
-|v0.04|forward |n|-|-|
-|v0.05|brach-prediction|n|-|-|
-|v0.06|exception & intr|n|-|-|
+|v0.04|add forward |n|-|-|
+|v0.05|add branch-prediction|n|-|-|
+|v0.06|add exception & intr|n|-|-|
 
 ## 1.2. version
 ### 1.2.1. v0.01 base arch
-- basic soc
-  - core 
-    - 5-stage-pipiline rv32i core
-    - i/d cache
-    - jtag & cpu_debug
-    - hazard detect & handle
-  - ahb
-    - master
-      - core
-      - dma 
-    - slave 
-      - sram
-      - rom
-      - ahb-to-apb bridge
-        - uart 
 ### 1.2.2. v0.02 code review
 1. 检查 remove ex_enable,  just remain decode_enable_out
-2. 检查 if i-cache miss, if-stage 会尝试访问 ahb 总线， 
+2. 检查 i-cache miss, if-stage 会尝试访问 ahb 总线， 
     - 删除 if-stage 里面的ahb访问，它应该等待cache 完成 ahb访问; 然后从cache取; 
     - 否则的话会出现总线冲突，降低效率 or 死锁。
     - d-cache 存在相同的问题
       - update : memory_enable_out set to 0 & wait for d-cache 
-1. 检查 me-stage, 当 cache miss 的时候，必须 stall，否则接下来的指令会导致 mem flush.
+3. 检查 me-stage, 当 cache miss 的时候，必须 stall，否则接下来的指令会导致 mem flush.
     - 新增一个 mem_stall , src : mem_stage, dst: rv32i , Or-ed with other stall source 
       - if-stage，if i-cache miss 是否需要stall ? 不需要，因为if 阶段会自动让下一个 stage halt;
       - 这里就是 if / me stage 的差别了, me stage 是需要告知前面的 stage 等待它, 而 if 已经有机制控制后面的stage wait
       - 3 个 stall 的需求，实现是否相同 ----------------？
-3. 检查 i/d cache, 将2者的主要存储器件，修改为 sram
+4. 检查 i/d cache, 将2者的主要存储器件，修改为 sram
     - 新建一个 sram module, 和 ahb_sram 不同，这个sram 是cpu内部的。
 
-4. 检查， sram/rom 
+5. 检查， sram/rom 
     - 将 memory 的实现，由 register -> sram/rom
     - 添加 paramter: base_addr & size
     - 添加 busrt 的支持。 cache miss will generate burst or wrap cmd
-5. 检查 i/d cache , fetch or store data address need to be deal with if burst or wrap diff 
+6. 检查 i/d cache , fetch or store data address need to be deal with if burst or wrap diff 
+7. 添加 为dma添加 ahb-slave 接口，start/src/dst/len/done now is intrernal-register , can be access by cpu.
+    - update ahb-arbiter/decoder & top for dma update
+8. 添加 addrmep.v 文件，将各个模块的base_addr 统一管理
+    - 修改 decoder
+9. 
 
 ## 1.3. remark
 ### 1.3.1. note

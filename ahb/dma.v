@@ -35,9 +35,6 @@ Implement error handling mechanisms to manage and respond to bus errors or inval
 
 */
 
-
-
-
 module DMA_AHB_Master #(
     parameter ADDR_WIDTH = 32,
     parameter DATA_WIDTH = 32,
