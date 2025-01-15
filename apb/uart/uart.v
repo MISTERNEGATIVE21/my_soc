@@ -38,11 +38,7 @@ module APB_Slave_UART #(
      .rd_data(tx_rd_data),
      .full(tx_full),
      .empty(tx_empty),
-     .fifo_fill_cnt(tx_fifo_fill_cnt),
-     .flow_ctrl_th(tx_flow_ctrl_th),
-     .flow_ctrl_rts_n(tx_flow_ctrl_rts_n),
-     .water_mark_th(tx_water_mark_th),
-     .water_mark_status(tx_water_mark_status)
+     .fifo_fill_cnt(tx_fifo_fill_cnt)
     );
 
     // 接收 FIFO 实例化
@@ -58,11 +54,7 @@ module APB_Slave_UART #(
      .rd_data(rx_rd_data),
      .full(rx_full),
      .empty(rx_empty),
-     .fifo_fill_cnt(rx_fifo_fill_cnt),
-     .flow_ctrl_th(rx_flow_ctrl_th),
-     .flow_ctrl_rts_n(rx_flow_ctrl_rts_n),
-     .water_mark_th(rx_water_mark_th),
-     .water_mark_status(rx_water_mark_status)
+     .fifo_fill_cnt(rx_fifo_fill_cnt)
     );
 
     // 内部信号定义
@@ -89,6 +81,12 @@ module APB_Slave_UART #(
     wire rx_flow_ctrl_rts_n;
     wire [ADDR_WIDTH:0] rx_water_mark_th;
     wire rx_water_mark_status;
+
+    // Flow control logic
+    assign flow_ctrl_rts_n = (fifo_fill_cnt < flow_ctrl_th);
+
+    // Watermark status logic
+    assign water_mark_status = (fifo_fill_cnt >= water_mark_th);
 
     // APB 写操作
     assign tx_wr_en = PSEL && PENABLE && PWRITE && ((PADDR & ~(32'hF)) == BASE_ADDR) && (PADDR[3:0] == 4'h4);

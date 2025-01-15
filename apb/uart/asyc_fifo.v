@@ -1,3 +1,45 @@
+/*
+Parameters
+DATA_WIDTH: Width of the data bus.
+ADDR_WIDTH: Width of the address bus, which determines the depth of the FIFO.
+
+Ports
+wr_clk, rd_clk: Write and read clock signals.
+wr_en, rd_en: Write and read enable signals.
+wr_data: Data input bus for writing.
+rd_data: Data output bus for reading.
+full: Signal indicating that the FIFO is full.
+empty: Signal indicating that the FIFO is empty.
+fifo_fill_cnt: Signal indicating the number of elements in the FIFO.
+
+Internal Registers and Memory
+mem: Memory array to store the FIFO data.
+wr_ptr, rd_ptr: Write and read pointers.
+
+Binary to Gray Code Conversion
+Binary to gray code and gray code to binary conversion functions are defined to synchronize pointers between different clock domains.
+
+Write Operation
+Occurs on the positive edge of wr_clk.
+If wr_en is asserted and the FIFO is not full, data is written to the memory array at the location pointed to by wr_ptr, 
+and the write pointer is incremented.
+
+Read Operation
+Occurs on the positive edge of rd_clk.
+If rd_en is asserted and the FIFO is not empty, data is read from the memory array at the location pointed to by rd_ptr, 
+and the read pointer is incremented.
+
+Full Signal Generation
+The write pointer in gray code is compared with the synchronized read pointer in gray code to determine if the FIFO is full.
+
+Empty Signal Generation
+The read pointer in gray code is compared with the synchronized write pointer in gray code to determine if the FIFO is empty.
+
+FIFO Fill Count
+The difference between the write pointer and the read pointer gives the number of elements in the FIFO.
+
+*/
+
 module AsyncFIFO #(
     parameter DATA_WIDTH = 8,
     parameter ADDR_WIDTH = 4
@@ -10,21 +52,16 @@ module AsyncFIFO #(
     output wire [DATA_WIDTH-1:0] rd_data,
     output wire full,
     output wire empty,
-    output wire [ADDR_WIDTH:0] fifo_fill_cnt,
-    input wire [ADDR_WIDTH:0] flow_ctrl_th,
-    output wire flow_ctrl_rts_n,
-    input wire [ADDR_WIDTH:0] water_mark_th,
-    output wire water_mark_status
+    output wire [ADDR_WIDTH:0] fifo_fill_cnt
 );
-
-    // 定义内部存储数组
+    // Define internal storage array
     reg [DATA_WIDTH-1:0] mem [(2**ADDR_WIDTH)-1:0];
 
-    // 写指针和读指针
+    // Write and read pointers
     reg [ADDR_WIDTH:0] wr_ptr;
     reg [ADDR_WIDTH:0] rd_ptr;
 
-    // 二进制转格雷码
+    // Binary to Gray code conversion
     function [ADDR_WIDTH:0] bin2gray;
         input [ADDR_WIDTH:0] bin;
         begin
@@ -32,7 +69,7 @@ module AsyncFIFO #(
         end
     endfunction
 
-    // 格雷码转二进制
+    // Gray code to binary conversion
     function [ADDR_WIDTH:0] gray2bin;
         input [ADDR_WIDTH:0] gray;
         reg [ADDR_WIDTH:0] bin;
@@ -46,23 +83,23 @@ module AsyncFIFO #(
         end
     endfunction
 
-    // 写操作
+    // Write operation
     always @(posedge wr_clk) begin
-        if (wr_en &&!full) begin
+        if (wr_en && !full) begin
             mem[wr_ptr[ADDR_WIDTH-1:0]] <= wr_data;
             wr_ptr <= wr_ptr + 1;
         end
     end
 
-    // 读操作
+    // Read operation
     always @(posedge rd_clk) begin
-        if (rd_en &&!empty) begin
+        if (rd_en && !empty) begin
             rd_data <= mem[rd_ptr[ADDR_WIDTH-1:0]];
             rd_ptr <= rd_ptr + 1;
         end
     end
 
-    // 生成 full 信号
+    // Generate full signal
     wire [ADDR_WIDTH:0] wr_ptr_gray = bin2gray(wr_ptr);
     wire [ADDR_WIDTH:0] rd_ptr_gray_sync;
     reg [ADDR_WIDTH:0] rd_ptr_gray_sync_r1, rd_ptr_gray_sync_r2;
@@ -72,7 +109,7 @@ module AsyncFIFO #(
     end
     assign full = (wr_ptr_gray == {~rd_ptr_gray_sync_r2[ADDR_WIDTH:ADDR_WIDTH-1], rd_ptr_gray_sync_r2[ADDR_WIDTH-2:0]});
 
-    // 生成 empty 信号
+    // Generate empty signal
     wire [ADDR_WIDTH:0] rd_ptr_gray = bin2gray(rd_ptr);
     wire [ADDR_WIDTH:0] wr_ptr_gray_sync;
     reg [ADDR_WIDTH:0] wr_ptr_gray_sync_r1, wr_ptr_gray_sync_r2;
@@ -82,13 +119,7 @@ module AsyncFIFO #(
     end
     assign empty = (rd_ptr_gray == wr_ptr_gray_sync_r2);
 
-    // 计算 fifo_fill_cnt
+    // Calculate fifo_fill_cnt
     assign fifo_fill_cnt = wr_ptr - rd_ptr;
-
-    // 生成 flow_ctrl_rts_n 信号
-    assign flow_ctrl_rts_n = (fifo_fill_cnt < flow_ctrl_th);
-
-    // 生成 water_mark_status 信号
-    assign water_mark_status = (fifo_fill_cnt >= water_mark_th);
 
 endmodule
