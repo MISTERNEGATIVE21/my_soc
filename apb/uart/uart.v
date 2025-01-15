@@ -16,7 +16,9 @@ module APB_Slave_UART #(
     output reg [31:0] PRDATA,
     // UART 接口
     input wire RX,
-    output wire TX
+    output wire TX,
+    // UART 时钟
+    input wire uart_clk   // Added uart_clk signal
 );
 
     // 内部寄存器定义
@@ -28,9 +30,6 @@ module APB_Slave_UART #(
     reg [31:0] rx_status_reg;
     reg [31:0] tx_data_reg;
     reg [31:0] rx_data_reg;
-
-    reg [7:0] tx_shift; // 新增 tx_shift 寄存器
-    reg [7:0] rx_shift; // 新增 rx_shift 寄存器
 
     // Register offset definitions
     localparam CONTROL_REG_OFFSET      = 32'h00;
@@ -92,18 +91,18 @@ module APB_Slave_UART #(
       .FIFO_DATA_WIDTH(FIFO_DATA_WIDTH),
       .FIFO_ADDR_WIDTH(FIFO_ADDR_WIDTH)
     ) tx_fifo (
-     .wr_clk(PCLK),
-     .rd_clk(PCLK),
-     .reset_n(tx_fifo_resetn),  
-     .wr_en(tx_wr_en),
-     .rd_en(tx_rd_en),
-     .wr_data(tx_wr_data),
-     .rd_data(tx_rd_data),
-     .full(tx_full),
-     .empty(tx_empty),
-     .fifo_fill_cnt(tx_fifo_fill_cnt)
-     .fifo_overflow(tx_fifo_overflow),
-     .fifo_underflow(tx_fifo_underflow)     
+    .wr_clk(PCLK),          // Write clock is PCLK
+    .rd_clk(uart_clk),      // Read clock is uart_clk
+    .reset_n(tx_fifo_resetn),  
+    .wr_en(tx_wr_en),
+    .rd_en(tx_rd_en),
+    .wr_data(tx_wr_data),
+    .rd_data(tx_rd_data),
+    .full(tx_full),
+    .empty(tx_empty),
+    .fifo_fill_cnt(tx_fifo_fill_cnt),
+    .fifo_overflow(tx_fifo_overflow),
+    .fifo_underflow(tx_fifo_underflow)     
     );
 
     // 接收 FIFO 实例化
@@ -111,18 +110,18 @@ module APB_Slave_UART #(
       .FIFO_DATA_WIDTH(FIFO_DATA_WIDTH),
       .FIFO_ADDR_WIDTH(FIFO_ADDR_WIDTH)
     ) rx_fifo (
-     .wr_clk(PCLK),
-     .rd_clk(PCLK),
-     .reset_n(rx_fifo_resetn),  
-     .wr_en(rx_wr_en),
-     .rd_en(rx_rd_en),
-     .wr_data(rx_wr_data),
-     .rd_data(rx_rd_data),
-     .full(rx_full),
-     .empty(rx_empty),
-     .fifo_fill_cnt(rx_fifo_fill_cnt)
-     .fifo_overflow(rx_fifo_overflow),
-     .fifo_underflow(rx_fifo_underflow)
+    .wr_clk(uart_clk),      // Write clock is uart_clk
+    .rd_clk(PCLK),          // Read clock is PCLK
+    .reset_n(rx_fifo_resetn),  
+    .wr_en(rx_wr_en),
+    .rd_en(rx_rd_en),
+    .wr_data(rx_wr_data),
+    .rd_data(rx_rd_data),
+    .full(rx_full),
+    .empty(rx_empty),
+    .fifo_fill_cnt(rx_fifo_fill_cnt),
+    .fifo_overflow(rx_fifo_overflow),
+    .fifo_underflow(rx_fifo_underflow)
     );
 
     // 内部信号定义
@@ -143,7 +142,7 @@ module APB_Slave_UART #(
 
     wire rx_wr_en;
     wire rx_rd_en;
-    wire tx_fifo_resetn;
+    wire rx_fifo_resetn;
     wire [FIFO_DATA_WIDTH-1:0] rx_wr_data;
     wire [FIFO_DATA_WIDTH-1:0] rx_rd_data;
     wire rx_full;
@@ -160,8 +159,8 @@ module APB_Slave_UART #(
     wire [3:0] frac_div;
     wire [31:0] div_value;
 
-    wire uart_bit_clk_x16;
-    wire uart_bit_clk;
+    reg uart_bit_clk_x16;
+    reg uart_bit_clk;
 
     // 提取 int_div 和 frac_div
     assign frac_div = clk_div_reg[CLK_DIV_FRAC_BIT + CLK_DIV_FRAC_WIDTH - 1 : CLK_DIV_FRAC_BIT];
@@ -169,8 +168,15 @@ module APB_Slave_UART #(
     assign div_value = (int_div * 16) + frac_div;
 
     // 生成 uart_bit_clk_x16 和 uart_bit_clk 时钟信号
-    assign uart_bit_clk_x16 = (div_value == 0) ? 1'b0 : (PCLK % div_value == 0);
-    assign uart_bit_clk = (div_value == 0) ? 1'b0 : (PCLK % (div_value * 16) == 0);
+    always @(posedge uart_clk or negedge PRESETn) begin
+        if (!PRESETn) begin
+            uart_bit_clk_x16 <= 1'b0;
+            uart_bit_clk <= 1'b0;
+        end else begin
+            uart_bit_clk_x16 <= (div_value == 0) ? 1'b0 : (uart_clk % div_value == 0);
+            uart_bit_clk <= (div_value == 0) ? 1'b0 : (uart_clk % (div_value * 16) == 0);
+        end
+    end
 
     // 提取 FIFO  reset
     assign tx_fifo_resetn = tx_fifo_ctrl_reg[TX_FIFO_RESET_BIT];
@@ -193,6 +199,45 @@ module APB_Slave_UART #(
     wire tx_shift_idle; // tx_shift 处于空闲状态
     wire rx_shift_full; // rx_shift 已接收完整一帧数据
 
+    // Instantiate tx_shift sub-module
+    tx_shift tx_shift_inst (
+        .clk(uart_clk),
+        .reset_n(PRESETn),
+        .data_in(tx_rd_data),
+        .load(tx_rd_en),
+        .uart_bit_clk(uart_bit_clk),
+        .tx(TX),
+        .idle(tx_shift_idle)
+    );
+
+    // Instantiate rx_shift sub-module
+    rx_shift rx_shift_inst (
+        .clk(uart_clk),
+        .reset_n(PRESETn),
+        .uart_bit_clk_x16(uart_bit_clk_x16),
+        .uart_bit_clk(uart_bit_clk),
+        .rx(RX),
+        .data_out(rx_wr_data),
+        .full(rx_shift_full),
+        .err_break(rx_shift_err_break)
+    );
+
+    // UART fifo access 
+    assign tx_wr_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + TX_DATA_REG_OFFSET );
+    assign tx_rd_en = (tx_shift_idle && !tx_empty); // 当 tx_shift 空闲且 tx_fifo 不空时，从 tx_fifo 读取数据
+    always @(posedge uart_clk) begin
+        if (tx_wr_en) begin
+            tx_wr_data <= PWDATA[FIFO_DATA_WIDTH-1:0];
+        end
+            end
+
+    assign rx_rd_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + RX_DATA_REG_OFFSET ); // APB 访问 rx-data register
+    always @(posedge uart_clk) begin
+        if (rx_rd_en) begin
+            PRDATA[FIFO_DATA_WIDTH-1:0] <= rx_rd_data;
+        end
+    end
+
     // APB 写操作
     always @(posedge PCLK or negedge PRESETn) begin
         if (!PRESETn) begin
@@ -201,8 +246,6 @@ module APB_Slave_UART #(
             tx_fifo_ctrl_reg <= TX_FIFO_CTLR_REG_DEFAULT_VALUE;   
             rx_fifo_ctrl_reg <= RX_FIFO_CTLR_REG_DEFAULT_VALUE;      
             tx_data_reg <= 32'b0;        
-            tx_shift <= 8'b0; // 复位 tx_shift 寄存器
-            rx_shift <= 8'b0; // 复位 rx_shift 寄存器
         end else if (PSEL && PENABLE && PWRITE) begin
             case (PADDR)
                 BASE_ADDR + CONTROL_REG_OFFSET: control_reg <= PWDATA; // 控制寄存器
@@ -213,8 +256,8 @@ module APB_Slave_UART #(
                 // 可以添加更多寄存器的写操作
                 default: ;
             endcase
-                    end
-                end
+        end
+    end
 
     // APB 读操作
     always @(*) begin
@@ -225,8 +268,8 @@ module APB_Slave_UART #(
                 BASE_ADDR + TX_FIFO_CTLR_REG_OFFSET: PRDATA = tx_fifo_ctrl_reg;
                 BASE_ADDR + RX_FIFO_CTLR_REG_OFFSET: PRDATA = rx_fifo_ctrl_reg; 
                 BASE_ADDR + RX_DATA_REG_OFFSET: PRDATA = rx_data_reg; // 接收数据寄存器
-                BASE_ADDR + TX_STATUS_REG_OFFSET: PRDATA = tx_status_reg; // 发送状态寄存器
-                BASE_ADDR + RX_STATUS_REG_OFFSET: PRDATA = rx_status_reg; // 接收状态寄存器
+                BASE_ADDR + TX_STATUS_REG_OFFSET: PRDATA = tx_status_reg_sync; // 发送状态寄存器
+                BASE_ADDR + RX_STATUS_REG_OFFSET: PRDATA = rx_status_reg_sync; // 接收状态寄存器
                 default: PRDATA = 32'b0;
             endcase
         end else begin
@@ -234,114 +277,8 @@ module APB_Slave_UART #(
         end
     end
 
-    // UART fifo ctrl
-    assign tx_wr_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + TX_DATA_REG_OFFSET );
-    assign tx_rd_en = (tx_shift_idle && !tx_empty); // 当 tx_shift 空闲且 tx_fifo 不空时，从 tx_fifo 读取数据
-    always @(posedge PCLK) begin
-        if (tx_wr_en) begin
-            tx_wr_data <= PWDATA[FIFO_DATA_WIDTH-1:0];
-        end
-        if (tx_rd_en) begin
-            // 当 tx_shift 空闲且 tx_fifo 不空时，将数据从 tx_fifo 移入 tx_shift
-            tx_shift <= tx_rd_data;
-            tx_shift_idle <= 0; // get a char to shift , idle = 0
-        end
-    end
-
-    assign rx_wr_en = rx_shift_full;
-    assign rx_rd_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + RX_DATA_REG_OFFSET ); // APB 访问 rx-data register
-    always @(posedge PCLK) begin
-        if (rx_wr_en) begin
-            // 当 rx_shift 接收完一帧数据且 rx_fifo 不满时，将数据从 rx_shift 写入 rx_fifo
-            rx_wr_data <= rx_shift;
-        end
-        if (rx_rd_en) begin
-            PRDATA[FIFO_DATA_WIDTH-1:0] <= rx_rd_data;
-        end
-    end
-
-    // 使用 uart_bit_clk 将 tx_shift 里的数据按位发送，并添加起始位/结束位
-    always @(posedge uart_bit_clk or negedge PRESETn) begin
-        if (!PRESETn) begin
-            tx_bit_index <= 4'b0;
-        end else if (tx_shift_idle) begin
-            tx_bit_index <= 4'b0;
-        end else begin
-            case (tx_bit_index)
-                4'b0000: TX <= 1'b0; // 发送起始位
-                4'b1000: TX <= 1'b1; // 发送停止位
-                default: begin
-                    TX <= tx_shift[0]; // 发送数据位
-                    tx_shift <= {1'b0, tx_shift[7:1]}; // 右移数据
-                end
-            endcase
-
-            if (tx_bit_index < 4'b1000) begin
-                tx_bit_index <= tx_bit_index + 1;
-            end else begin
-                tx_bit_index <= 4'b0000;
-                tx_shift_idle <= 1; // shift a char, idle = 1
-            end
-        end
-    end
-
-    // UART 检测 rx start, 接收数据，并检查 stop 
-    always @(posedge uart_bit_clk_x16 or negedge PRESETn) begin
-        if (!PRESETn) begin
-            rx_sample_count <= 4'b0;
-            rx_sample_state <= 3'b0;
-            rx_bit_index <= 4'b0;
-            rx_shift_err_break <= 1'b0;
-        end else begin
-            case (rx_sample_state)
-                3'b000: begin // 寻找起始位
-                    if (RX == 1'b0) begin
-                        rx_sample_count <= rx_sample_count + 1;
-                        if (rx_sample_count == 4'b1000) begin
-                            rx_sample_state <= 3'b001; // 找到起始位，开始接收数据
-                            rx_sample_count <= 4'b0;
-                        end
-                    end else begin
-                        rx_sample_count <= 4'b0;
-                    end
-                end
-                3'b001: begin // 接收数据位和检查停止位
-                    rx_sample_state <= 3'b010; // 直接进入检查停止位状态，使用 uart_bit_clk 进行采样
-                end
-                3'b010: begin // 检查停止位
-                    // 等待 uart_bit_clk 上升沿
-                end
-                default: rx_sample_state <= 3'b000; // 其他状态，回到寻找起始位状态
-            endcase
-        end
-    end
-
-    always @(posedge uart_bit_clk or negedge PRESETn) begin
-        if (!PRESETn) begin
-            rx_bit_index <= 4'b0;
-        end else if (rx_sample_state == 3'b010) begin
-            if (rx_bit_index < 4'b1000) begin
-                // 接收数据位
-                rx_shift[rx_bit_index] <= RX;
-                rx_bit_index <= rx_bit_index + 1;
-            end else if (rx_bit_index == 4'b1000) begin
-                // 开始检查停止位
-                if (RX == 1'b1) begin
-                    // 假设停止位为 1 位
-                    rx_shift_full <= 1'b1; // 接收完一帧数据且停止位正确
-                    rx_sample_state <= 3'b000; // 回到寻找起始位状态
-                    rx_bit_index <= 4'b0;
-                end else begin
-                    rx_shift_err_break <= 1'b1; // 停止位错误
-                    rx_sample_state <= 3'b000; // 回到寻找起始位状态
-                    rx_bit_index <= 4'b0;
-                end
-            end
-        end
-    end
-
     // UART 状态更新
-    always @(posedge PCLK or negedge PRESETn) begin
+    always @(posedge uart_clk or negedge PRESETn) begin
         if (!PRESETn) begin
             tx_status_reg <= 32'b0;
             rx_status_reg <= 32'b0;
@@ -358,11 +295,23 @@ module APB_Slave_UART #(
             rx_status_reg[RX_FIFO_EMPTY_BIT] <= rx_empty; 
             rx_status_reg[RX_FIFO_FULL_BIT] <= rx_full; 
             rx_status_reg[RX_FIFO_WATERMARK_BIT] <= rx_water_mark; 
-            tx_status_reg[RX_FIFO_UNDERFLOW_BIT] <= rx_fifo_underflow; 
-            tx_status_reg[RX_FIFO_OVERFLOW_BIT] <= rx_fifo_overflow ;   
+            rx_status_reg[RX_FIFO_UNDERFLOW_BIT] <= rx_fifo_underflow; 
+            rx_status_reg[RX_FIFO_OVERFLOW_BIT] <= rx_fifo_overflow;   
             rx_status_reg[RX_SHIFT_FULL_BIT] <= rx_shift_full;
             rx_status_reg[RX_SHIFT_ERR_BREAK_BIT] <= rx_shift_err_break;           
-            // 可以添加更多状态信息更新
+        end
+    end
+
+    // Synchronize status registers to PCLK domain
+    reg [31:0] tx_status_reg_sync;
+    reg [31:0] rx_status_reg_sync;
+    always @(posedge PCLK or negedge PRESETn) begin
+        if (!PRESETn) begin
+            tx_status_reg_sync <= 32'b0;
+            rx_status_reg_sync <= 32'b0;
+        end else begin
+            tx_status_reg_sync <= tx_status_reg;
+            rx_status_reg_sync <= rx_status_reg;
         end
     end
 
