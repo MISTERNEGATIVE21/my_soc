@@ -350,16 +350,16 @@ module APB_Slave_UART #(
             tx_status_reg[TX_FIFO_EMPTY_BIT] <= tx_empty;
             tx_status_reg[TX_FIFO_FULL_BIT] <= tx_full;  
             tx_status_reg[TX_FIFO_WATERMARK_BIT] <= tx_water_mark; 
-            tx_status_reg[TX_FIFO_UNDERFLOW_BIT] <= tx_fifo_overflow; 
-            tx_status_reg[TX_FIFO_OVERFLOW_BIT] <= tx_fifo_underflow;            
+            tx_status_reg[TX_FIFO_UNDERFLOW_BIT] <= tx_fifo_underflow; 
+            tx_status_reg[TX_FIFO_OVERFLOW_BIT] <= tx_fifo_overflow;            
             tx_status_reg[TX_SHIFT_IDLE_BIT] <= tx_shift_idle; 
 
             rx_status_reg[RX_FIFO_FILL_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_FILL_BIT] <= rx_fifo_fill_cnt;
             rx_status_reg[RX_FIFO_EMPTY_BIT] <= rx_empty; 
             rx_status_reg[RX_FIFO_FULL_BIT] <= rx_full; 
             rx_status_reg[RX_FIFO_WATERMARK_BIT] <= rx_water_mark; 
-            tx_status_reg[RX_FIFO_UNDERFLOW_BIT] <= rx_fifo_overflow; 
-            tx_status_reg[RX_FIFO_OVERFLOW_BIT] <= rx_fifo_underflow;   
+            tx_status_reg[RX_FIFO_UNDERFLOW_BIT] <= rx_fifo_underflow; 
+            tx_status_reg[RX_FIFO_OVERFLOW_BIT] <= rx_fifo_overflow ;   
             rx_status_reg[RX_SHIFT_FULL_BIT] <= rx_shift_full;
             rx_status_reg[RX_SHIFT_ERR_BREAK_BIT] <= rx_shift_err_break;           
             // 可以添加更多状态信息更新
