@@ -42,7 +42,17 @@ module APB_Slave_UART #(
     localparam TX_DATA_REG_OFFSET      = 32'h80;
     localparam RX_DATA_REG_OFFSET      = 32'h84;
 
+    // ctrl register bit positions
+    localparam TX_EN_BIT   = 0;
+    localparam RX_EN_BIT   = 1;
+
     // tx fifo ctrl register bit positions
+    localparam CLK_DIV_FRAC_BIT   = 0;     
+    localparam CLK_DIV_FRAC_WIDTH   = 4;        
+    localparam CLK_DIV_INT_BIT   = 16;
+    localparam CLK_DIV_INT_WIDTH   = 16;
+ 
+    // clk div register bit positions
     localparam TX_FIFO_WATERMARK_BIT   = 0;
 
     // rx fifo ctrl register bit positionsR
@@ -65,9 +75,10 @@ module APB_Slave_UART #(
     localparam RX_SHIFT_ERR_BREAK_BIT  = 20;
 
     // Register default value definitions
-    localparam CONTROL_REG_DEFAULT_VALUE      = 1<<1;
-    localparam TX_FIFO_CTLR_REG_DEFAULT_VALUE = 8<<TX_FIFO_WATERMARK_BIT;
-    localparam RX_FIFO_CTLR_DEFAULT_VALUE = 8<<RX_FIFO_WATERMARK_TH_BIT + (FIFO_DEPTH - 2)<<RX_FIFO_FLOWCTRL_TH_BIT;   
+    localparam CONTROL_REG_DEFAULT_VALUE      = 0 << TX_EN_BIT + 0 << RX_EN_BIT;
+    localparam CLK_DIV_REG_DEFAULT_VALUE      = 5 << CLK_DIV_FRAC_BIT + 208 << CLK_DIV_INT_BIT;
+    localparam TX_FIFO_CTLR_REG_DEFAULT_VALUE = 8 <<TX_FIFO_WATERMARK_BIT;
+    localparam RX_FIFO_CTLR_DEFAULT_VALUE = 8 << RX_FIFO_WATERMARK_TH_BIT + (FIFO_DEPTH - 2) << RX_FIFO_FLOWCTRL_TH_BIT;   
 
     // translate from fifo depth to FIFO addr width    
     localparam FIFO_ADDR_WIDTH = $clog2(FIFO_DEPTH)
@@ -137,8 +148,8 @@ module APB_Slave_UART #(
     wire uart_bit_clk;
 
     // get int_div 和 frac_div
-    assign int_div = clk_div_reg[15:8];
-    assign frac_div = clk_div_reg[3:0];r
+    assign frac_div = clk_div_reg[CLK_DIV_FRAC_BIT+CLK_DIV_FRAC_WIDTH-1:CLK_DIV_FRAC_BIT];
+    assign int_div = clk_div_reg[CLK_DIV_INT_BIT+CLK_DIV_INT_WIDTH-1:CLK_DIV_INT_BIT];
     assign div_value = (int_div * 16) + frac_div;
 
     // 生成 uart_bit_clk_x16 和 uart_bit_clk 时钟信号
@@ -165,19 +176,22 @@ module APB_Slave_UART #(
     // APB 写操作
     always @(posedge PCLK or negedge PRESETn) begin
         if (!PRESETn) begin
-            control_reg <= 32'b0;
-            clk_div <= 32'b0; // 复位 clk_div 寄存器
-            tx_fifo_ctrl_reg <= 32'b0;   
-            tx_fifo_ctrl_reg <= 32'b0;      
-
+            control_reg <= CONTROL_REG_DEFAULT_VALUE;
+            clk_div_reg <= CLK_DIV_REG_DEFAULT_VALUE; // 复位 clk_div 寄存器
+            tx_fifo_ctrl_reg <= TX_FIFO_CTLR_REG_DEFAULT_VALUE;   
+            tx_fifo_ctrl_reg <= RX_FIFO_CTLR_DEFAULT_VALUE;      
             tx_data_reg <= 32'b0;        
             tx_shift <= 8'b0; // 复位 tx_shift 寄存器
             rx_shift <= 8'b0; // 复位 rx_shift 寄存器
         end else if (PSEL && PENABLE && PWRITE) begin
             case (PADDR)
                 BASE_ADDR + CONTROL_REG_OFFSET: control_reg <= PWDATA; // 控制寄存器
-                BASE_ADDR + TX_DATA_REG_OFFSET: tx_data_reg <= PWDATA; // 发送数据寄存器
+                BASE_ADDR + CLK_DIV_REG_OFFSET: clk_div_reg <= PWDATA; // 发送数据寄存器
+                BASE_ADDR + TX_FIFO_CTLR_REG_OFFSET: tx_fifo_ctrl_reg <= PWDATA; // tx-fifo ctrl 寄存器
+                BASE_ADDR + RX_FIFO_CTLR_REG_OFFSET: rx_fifo_ctrl_reg <= PWDATA; // rx-fifo ctrl 寄存器    
+                BASE_ADDR + TX_DATA_REG_OFFSET: tx_data_reg <= PWDATA; // tx-data 寄存器                             
                 // 可以添加更多寄存器的写操作
+
                 default: ;
             endcase
                     end
@@ -188,6 +202,9 @@ module APB_Slave_UART #(
         if (PSEL && PENABLE && !PWRITE) begin
             case (PADDR)
                 BASE_ADDR + CONTROL_REG_OFFSET: PRDATA = control_reg; // 控制寄存器
+                BASE_ADDR + CLK_DIV_REG_OFFSET: PRDATA = clk_div_reg;
+                BASE_ADDR + TX_FIFO_CTLR_REG_OFFSET: PRDATA = tx_fifo_ctrl_reg;
+                BASE_ADDR + RX_FIFO_CTLR_REG_OFFSET: PRDATA = rx_fifo_ctrl_reg; 
                 BASE_ADDR + RX_DATA_REG_OFFSET: PRDATA = rx_data_reg; // 接收数据寄存器
                 BASE_ADDR + TX_STATUS_REG_OFFSET: PRDATA = tx_status_reg; // 发送状态寄存器
                 BASE_ADDR + RX_STATUS_REG_OFFSET: PRDATA = rx_status_reg; // 接收状态寄存器
