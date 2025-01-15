@@ -113,7 +113,7 @@ module APB_Slave_UART #(
     ) rx_fifo (
      .wr_clk(PCLK),
      .rd_clk(PCLK),
-     .reset_n(tx_fifo_resetn),  
+     .reset_n(rx_fifo_resetn),  
      .wr_en(rx_wr_en),
      .rd_en(rx_rd_en),
      .wr_data(rx_wr_data),
@@ -128,6 +128,7 @@ module APB_Slave_UART #(
     // 内部信号定义
     wire tx_wr_en;
     wire tx_rd_en;
+    wire tx_fifo_resetn;
     wire [FIFO_DATA_WIDTH-1:0] tx_wr_data;
     wire [FIFO_DATA_WIDTH-1:0] tx_rd_data;
     wire tx_full;
@@ -142,6 +143,7 @@ module APB_Slave_UART #(
 
     wire rx_wr_en;
     wire rx_rd_en;
+    wire tx_fifo_resetn;
     wire [FIFO_DATA_WIDTH-1:0] rx_wr_data;
     wire [FIFO_DATA_WIDTH-1:0] rx_rd_data;
     wire rx_full;
@@ -169,6 +171,10 @@ module APB_Slave_UART #(
     // 生成 uart_bit_clk_x16 和 uart_bit_clk 时钟信号
     assign uart_bit_clk_x16 = (div_value == 0) ? 1'b0 : (PCLK % div_value == 0);
     assign uart_bit_clk = (div_value == 0) ? 1'b0 : (PCLK % (div_value * 16) == 0);
+
+    // 提取 FIFO  reset
+    assign tx_fifo_resetn = tx_fifo_ctrl_reg[TX_FIFO_RESET_BIT];
+    assign rx_fifo_resetn = rx_fifo_ctrl_reg[RX_FIFO_RESET_BIT]; 
 
     // 提取 FIFO 阈值
     assign tx_water_mark_th = tx_fifo_ctrl_reg[TX_FIFO_WATERMARK_TH_BIT + FIFO_ADDR_WIDTH - 1 : TX_FIFO_WATERMARK_TH_BIT];
