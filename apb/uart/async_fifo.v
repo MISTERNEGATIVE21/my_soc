@@ -46,13 +46,16 @@ module AsyncFIFO #(
 ) (
     input wire wr_clk,
     input wire rd_clk,
+    input wire reset_n,  // Active-low reset signal
     input wire wr_en,
     input wire rd_en,
     input wire [DATA_WIDTH-1:0] wr_data,
-    output wire [DATA_WIDTH-1:0] rd_data,
+    output reg [DATA_WIDTH-1:0] rd_data, // Changed to reg
     output wire full,
     output wire empty,
-    output wire [ADDR_WIDTH:0] fifo_fill_cnt
+    output wire [ADDR_WIDTH:0] fifo_fill_cnt,
+    output reg fifo_overflow,
+    output reg fifo_underflow
 );
     // Define internal storage array
     reg [DATA_WIDTH-1:0] mem [(2**ADDR_WIDTH)-1:0];
@@ -84,28 +87,53 @@ module AsyncFIFO #(
     endfunction
 
     // Write operation
-    always @(posedge wr_clk) begin
-        if (wr_en && !full) begin
+    always @(posedge wr_clk or negedge reset_n) begin
+        if (!reset_n) begin
+            wr_ptr <= 0;
+            fifo_overflow <= 0;
+        end else if (wr_en) begin
+            if (!full) begin
             mem[wr_ptr[ADDR_WIDTH-1:0]] <= wr_data;
             wr_ptr <= wr_ptr + 1;
+                fifo_overflow <= 0;
+            end else begin
+                // FIFO is full, set overflow flag
+                fifo_overflow <= 1;
+            end
         end
     end
 
-    // Read operation
-    always @(posedge rd_clk) begin
-        if (rd_en && !empty) begin
-            rd_data <= mem[rd_ptr[ADDR_WIDTH-1:0]];
+    // Read operation with registered output
+    reg [DATA_WIDTH-1:0] rd_data_next;
+    always @(posedge rd_clk or negedge reset_n) begin
+        if (!reset_n) begin
+            rd_ptr <= 0;
+            fifo_underflow <= 0;
+        end else if (rd_en) begin
+            if (!empty) begin
+                rd_data_next <= mem[rd_ptr[ADDR_WIDTH-1:0]];
             rd_ptr <= rd_ptr + 1;
+                fifo_underflow <= 0;
+            end else begin
+                // FIFO is empty, set underflow flag
+                fifo_underflow <= 1;
+            end
         end
+        rd_data <= rd_data_next; // Register the output
     end
 
     // Generate full signal
     wire [ADDR_WIDTH:0] wr_ptr_gray = bin2gray(wr_ptr);
     wire [ADDR_WIDTH:0] rd_ptr_gray_sync;
     reg [ADDR_WIDTH:0] rd_ptr_gray_sync_r1, rd_ptr_gray_sync_r2;
-    always @(posedge wr_clk) begin
+    always @(posedge wr_clk or negedge reset_n) begin
+        if (!reset_n) begin
+            rd_ptr_gray_sync_r1 <= 0;
+            rd_ptr_gray_sync_r2 <= 0;
+        end else begin
         rd_ptr_gray_sync_r1 <= bin2gray(rd_ptr);
         rd_ptr_gray_sync_r2 <= rd_ptr_gray_sync_r1;
+        end
     end
     assign full = (wr_ptr_gray == {~rd_ptr_gray_sync_r2[ADDR_WIDTH:ADDR_WIDTH-1], rd_ptr_gray_sync_r2[ADDR_WIDTH-2:0]});
 
@@ -113,9 +141,14 @@ module AsyncFIFO #(
     wire [ADDR_WIDTH:0] rd_ptr_gray = bin2gray(rd_ptr);
     wire [ADDR_WIDTH:0] wr_ptr_gray_sync;
     reg [ADDR_WIDTH:0] wr_ptr_gray_sync_r1, wr_ptr_gray_sync_r2;
-    always @(posedge rd_clk) begin
+    always @(posedge rd_clk or negedge reset_n) begin
+        if (!reset_n) begin
+            wr_ptr_gray_sync_r1 <= 0;
+            wr_ptr_gray_sync_r2 <= 0;
+        end else begin
         wr_ptr_gray_sync_r1 <= bin2gray(wr_ptr);
         wr_ptr_gray_sync_r2 <= wr_ptr_gray_sync_r1;
+        end
     end
     assign empty = (rd_ptr_gray == wr_ptr_gray_sync_r2);
 

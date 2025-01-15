@@ -1,9 +1,9 @@
 module APB_Slave_UART #(
     parameter ADDR_WIDTH = 32,
     parameter DATA_WIDTH = 32,   
-    parameter BASE_ADDR = 32'h1000_0000    
+    parameter BASE_ADDR = 32'h1000_0000,
     parameter FIFO_DATA_WIDTH = 8,
-    parameter FIFO_DEPTH = 16,
+    parameter FIFO_DEPTH = 16
 ) (
     // APB 接口
     input wire PCLK,
@@ -13,7 +13,7 @@ module APB_Slave_UART #(
     input wire PENABLE,
     input wire PWRITE,
     input wire [31:0] PWDATA,
-    output wire [31:0] PRDATA,
+    output reg [31:0] PRDATA,
     // UART 接口
     input wire RX,
     output wire TX
@@ -42,46 +42,50 @@ module APB_Slave_UART #(
     localparam TX_DATA_REG_OFFSET      = 32'h80;
     localparam RX_DATA_REG_OFFSET      = 32'h84;
 
-    // ctrl register bit positions
+    // Control register bit positions
     localparam TX_EN_BIT   = 0;
     localparam RX_EN_BIT   = 1;
+    localparam CONTROL_REG_DEFAULT_VALUE      = 0 << TX_EN_BIT + 0 << RX_EN_BIT;
 
-    // tx fifo ctrl register bit positions
+    // Clock division register bit positions
     localparam CLK_DIV_FRAC_BIT   = 0;     
-    localparam CLK_DIV_FRAC_WIDTH   = 4;        
-    localparam CLK_DIV_INT_BIT   = 16;
-    localparam CLK_DIV_INT_WIDTH   = 16;
+    localparam CLK_DIV_FRAC_WIDTH = 4;        
+    localparam CLK_DIV_INT_BIT    = 16;
+    localparam CLK_DIV_INT_WIDTH  = 16;
+    localparam CLK_DIV_REG_DEFAULT_VALUE      = 5 << CLK_DIV_FRAC_BIT + 208 << CLK_DIV_INT_BIT;
  
-    // clk div register bit positions
-    localparam TX_FIFO_WATERMARK_BIT   = 0;
+    // FIFO control register bit positions
+    localparam TX_FIFO_WATERMARK_TH_BIT   = 0;
+    localparam TX_FIFO_RESET_BIT   = 31;  
+    localparam TX_FIFO_CTLR_REG_DEFAULT_VALUE = 8 << TX_FIFO_WATERMARK_TH_BIT + 1 << TX_FIFO_RESET_BIT;
 
-    // rx fifo ctrl register bit positionsR
-    localparam RX_FIFO_WATERMARK_TH_BIT   = 0;
-    localparam RX_FIFO_FLOWCTRL_TH_BIT   = 8;   
+    localparam RX_FIFO_WATERMARK_TH_BIT = 0;
+    localparam RX_FIFO_FLOWCTRL_TH_BIT  = 8;   
+    localparam RX_FIFO_RESET_BIT   = 31;  
+    localparam RX_FIFO_CTLR_REG_DEFAULT_VALUE = 8 << RX_FIFO_WATERMARK_TH_BIT + (FIFO_DEPTH - 2) << RX_FIFO_FLOWCTRL_TH_BIT  + 1 << RX_FIFO_RESET_BIT;
 
-    // tx Status register bit positions
-    localparam TX_FIFO_FILL_BIT        = 0;
-    localparam TX_FIFO_EMPTY_BIT       = 8;
-    localparam TX_FIFO_FULL_BIT        = 9;
-    localparam TX_FIFO_WATERMARK_BIT   = 10;    
-    localparam TX_SHIFT_IDLE_BIT       = 16;
+    // Status register bit positions
+    localparam TX_FIFO_FILL_BIT         = 0;
+    localparam TX_FIFO_EMPTY_BIT        = 8;
+    localparam TX_FIFO_FULL_BIT         = 9;
+    localparam TX_FIFO_WATERMARK_BIT    = 10;    
+    localparam TX_FIFO_UNDERFLOW_BIT    = 11;
+    localparam TX_FIFO_OVERFLOW_BIT    = 12;   
+    localparam TX_SHIFT_IDLE_BIT        = 16;
 
-     // tx Status register bit positions   
-    localparam RX_FIFO_FILL_BIT        = 0;    
-    localparam RX_FIFO_EMPTY_BIT       = 8;
-    localparam RX_FIFO_FULL_BIT        = 9;
-    localparam RX_FIFO_WATERMARK_BIT   = 10;        
-    localparam RX_SHIFT_FULL_BIT       = 16;
-    localparam RX_SHIFT_ERR_BREAK_BIT  = 20;
+    localparam RX_FIFO_FILL_BIT         = 0;    
+    localparam RX_FIFO_EMPTY_BIT        = 8;
+    localparam RX_FIFO_FULL_BIT         = 9;
+    localparam RX_FIFO_WATERMARK_BIT    = 10;    
+    localparam RX_FIFO_UNDERFLOW_BIT    = 11;
+    localparam RX_FIFO_OVERFLOW_BIT    = 12;       
+    localparam RX_SHIFT_FULL_BIT        = 16;
+    localparam RX_SHIFT_ERR_BREAK_BIT   = 20;
 
     // Register default value definitions
-    localparam CONTROL_REG_DEFAULT_VALUE      = 0 << TX_EN_BIT + 0 << RX_EN_BIT;
-    localparam CLK_DIV_REG_DEFAULT_VALUE      = 5 << CLK_DIV_FRAC_BIT + 208 << CLK_DIV_INT_BIT;
-    localparam TX_FIFO_CTLR_REG_DEFAULT_VALUE = 8 <<TX_FIFO_WATERMARK_BIT;
-    localparam RX_FIFO_CTLR_DEFAULT_VALUE = 8 << RX_FIFO_WATERMARK_TH_BIT + (FIFO_DEPTH - 2) << RX_FIFO_FLOWCTRL_TH_BIT;   
 
-    // translate from fifo depth to FIFO addr width    
-    localparam FIFO_ADDR_WIDTH = $clog2(FIFO_DEPTH)
+    // Translate from FIFO depth to FIFO address width    
+    localparam FIFO_ADDR_WIDTH = $clog2(FIFO_DEPTH);
 
     // 发送 FIFO 实例化
     AsyncFIFO #(
@@ -90,6 +94,7 @@ module APB_Slave_UART #(
     ) tx_fifo (
      .wr_clk(PCLK),
      .rd_clk(PCLK),
+     .reset_n(tx_fifo_resetn),  
      .wr_en(tx_wr_en),
      .rd_en(tx_rd_en),
      .wr_data(tx_wr_data),
@@ -97,6 +102,8 @@ module APB_Slave_UART #(
      .full(tx_full),
      .empty(tx_empty),
      .fifo_fill_cnt(tx_fifo_fill_cnt)
+     .fifo_overflow(tx_fifo_overflow),
+     .fifo_underflow(tx_fifo_underflow)     
     );
 
     // 接收 FIFO 实例化
@@ -106,6 +113,7 @@ module APB_Slave_UART #(
     ) rx_fifo (
      .wr_clk(PCLK),
      .rd_clk(PCLK),
+     .reset_n(tx_fifo_resetn),  
      .wr_en(rx_wr_en),
      .rd_en(rx_rd_en),
      .wr_data(rx_wr_data),
@@ -113,6 +121,8 @@ module APB_Slave_UART #(
      .full(rx_full),
      .empty(rx_empty),
      .fifo_fill_cnt(rx_fifo_fill_cnt)
+     .fifo_overflow(rx_fifo_overflow),
+     .fifo_underflow(rx_fifo_underflow)
     );
 
     // 内部信号定义
@@ -127,6 +137,8 @@ module APB_Slave_UART #(
     wire tx_flow_ctrl_rts_n;
     wire [FIFO_ADDR_WIDTH:0] tx_water_mark_th;
     wire tx_water_mark;
+    wire tx_fifo_overflow;
+    wire tx_fifo_underflow;
 
     wire rx_wr_en;
     wire rx_rd_en;
@@ -139,6 +151,8 @@ module APB_Slave_UART #(
     wire rx_flow_ctrl_rts_n;
     wire [FIFO_ADDR_WIDTH:0] rx_water_mark_th;
     wire rx_water_mark;
+    wire rx_fifo_overflow;
+    wire rx_fifo_underflow;   
 
     wire [15:0] int_div;
     wire [3:0] frac_div;
@@ -147,19 +161,19 @@ module APB_Slave_UART #(
     wire uart_bit_clk_x16;
     wire uart_bit_clk;
 
-    // get int_div 和 frac_div
-    assign frac_div = clk_div_reg[CLK_DIV_FRAC_BIT+CLK_DIV_FRAC_WIDTH-1:CLK_DIV_FRAC_BIT];
-    assign int_div = clk_div_reg[CLK_DIV_INT_BIT+CLK_DIV_INT_WIDTH-1:CLK_DIV_INT_BIT];
+    // 提取 int_div 和 frac_div
+    assign frac_div = clk_div_reg[CLK_DIV_FRAC_BIT + CLK_DIV_FRAC_WIDTH - 1 : CLK_DIV_FRAC_BIT];
+    assign int_div = clk_div_reg[CLK_DIV_INT_BIT + CLK_DIV_INT_WIDTH - 1 : CLK_DIV_INT_BIT];
     assign div_value = (int_div * 16) + frac_div;
 
     // 生成 uart_bit_clk_x16 和 uart_bit_clk 时钟信号
-    assign uart_bit_clk_x16 = (div_value == 0)? 1'b0 : (PCLK % div_value == 0);
-    assign uart_bit_clk = (div_value == 0)? 1'b0 : (PCLK % (div_value * 16) == 0);
+    assign uart_bit_clk_x16 = (div_value == 0) ? 1'b0 : (PCLK % div_value == 0);
+    assign uart_bit_clk = (div_value == 0) ? 1'b0 : (PCLK % (div_value * 16) == 0);
 
-    // get fifo watermark/flowctrl th
-    assign tx_water_mark_th = tx_fifo_ctrl_reg[TX_FIFO_WATERMARK_BIT+FIFO_ADDR_WIDTH-1:TX_FIFO_WATERMARK_BIT];
-    assign rx_water_mark_th = rx_fifo_ctrl_reg[RX_FIFO_WATERMARK_BIT+FIFO_ADDR_WIDTH-1:RX_FIFO_WATERMARK_BIT]; 
-    assign rx_flow_ctrl_th = rx_fifo_ctrl_reg[RX_FIFO_FLOWCTRL_TH_BIT+FIFO_ADDR_WIDTH-1:RX_FIFO_FLOWCTRL_TH_BIT];
+    // 提取 FIFO 阈值
+    assign tx_water_mark_th = tx_fifo_ctrl_reg[TX_FIFO_WATERMARK_TH_BIT + FIFO_ADDR_WIDTH - 1 : TX_FIFO_WATERMARK_TH_BIT];
+    assign rx_water_mark_th = rx_fifo_ctrl_reg[RX_FIFO_WATERMARK_TH_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_WATERMARK_TH_BIT]; 
+    assign rx_flow_ctrl_th = rx_fifo_ctrl_reg[RX_FIFO_FLOWCTRL_TH_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_FLOWCTRL_TH_BIT];
 
     // Flow control logic
     assign tx_flow_ctrl_rts_n = (tx_fifo_fill_cnt < tx_flow_ctrl_th);
@@ -179,7 +193,7 @@ module APB_Slave_UART #(
             control_reg <= CONTROL_REG_DEFAULT_VALUE;
             clk_div_reg <= CLK_DIV_REG_DEFAULT_VALUE; // 复位 clk_div 寄存器
             tx_fifo_ctrl_reg <= TX_FIFO_CTLR_REG_DEFAULT_VALUE;   
-            tx_fifo_ctrl_reg <= RX_FIFO_CTLR_DEFAULT_VALUE;      
+            rx_fifo_ctrl_reg <= RX_FIFO_CTLR_REG_DEFAULT_VALUE;      
             tx_data_reg <= 32'b0;        
             tx_shift <= 8'b0; // 复位 tx_shift 寄存器
             rx_shift <= 8'b0; // 复位 rx_shift 寄存器
@@ -191,7 +205,6 @@ module APB_Slave_UART #(
                 BASE_ADDR + RX_FIFO_CTLR_REG_OFFSET: rx_fifo_ctrl_reg <= PWDATA; // rx-fifo ctrl 寄存器    
                 BASE_ADDR + TX_DATA_REG_OFFSET: tx_data_reg <= PWDATA; // tx-data 寄存器                             
                 // 可以添加更多寄存器的写操作
-
                 default: ;
             endcase
                     end
@@ -216,8 +229,8 @@ module APB_Slave_UART #(
     end
 
     // UART fifo ctrl
-    assign tx_wr_en = PSEL && PENABLE && PWRITE && (PADDR & ~(32'hF)) == BASE_ADDR && PADDR[3:0] == 4'h4;
-    assign tx_rd_en = (tx_shift_idle &&!tx_empty); // 当 tx_shift 空闲且 tx_fifo 不空时，从 tx_fifo 读取数据
+    assign tx_wr_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + TX_DATA_REG_OFFSET );
+    assign tx_rd_en = (tx_shift_idle && !tx_empty); // 当 tx_shift 空闲且 tx_fifo 不空时，从 tx_fifo 读取数据
     always @(posedge PCLK) begin
         if (tx_wr_en) begin
             tx_wr_data <= PWDATA[FIFO_DATA_WIDTH-1:0];
@@ -225,12 +238,12 @@ module APB_Slave_UART #(
         if (tx_rd_en) begin
             // 当 tx_shift 空闲且 tx_fifo 不空时，将数据从 tx_fifo 移入 tx_shift
             tx_shift <= tx_rd_data;
-            tx_shift_idle = 0;          //get a char to shift , idle = 0
+            tx_shift_idle <= 0; // get a char to shift , idle = 0
         end
     end
 
     assign rx_wr_en = rx_shift_full;
-    assign rx_rd_en = PSEL && PENABLE && PWRITE && (PADDR & ~(32'hF)) == BASE_ADDR && PADDR[3:0] == 4'h8;   //apb 访问 rx-data register
+    assign rx_rd_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + RX_DATA_REG_OFFSET ); // APB 访问 rx-data register
     always @(posedge PCLK) begin
         if (rx_wr_en) begin
             // 当 rx_shift 接收完一帧数据且 rx_fifo 不满时，将数据从 rx_shift 写入 rx_fifo
@@ -240,7 +253,6 @@ module APB_Slave_UART #(
             PRDATA[FIFO_DATA_WIDTH-1:0] <= rx_rd_data;
         end
     end
-
 
     // 使用 uart_bit_clk 将 tx_shift 里的数据按位发送，并添加起始位/结束位
     always @(posedge uart_bit_clk or negedge PRESETn) begin
@@ -262,12 +274,12 @@ module APB_Slave_UART #(
                 tx_bit_index <= tx_bit_index + 1;
             end else begin
                 tx_bit_index <= 4'b0000;
-                tx_shift_idle = 1;              //shift a char, idle = 1
+                tx_shift_idle <= 1; // shift a char, idle = 1
             end
         end
     end
 
-    // UART 检测 rx start, 接收数据，并检查stop 
+    // UART 检测 rx start, 接收数据，并检查 stop 
     always @(posedge uart_bit_clk_x16 or negedge PRESETn) begin
         if (!PRESETn) begin
             rx_sample_count <= 4'b0;
@@ -322,26 +334,28 @@ module APB_Slave_UART #(
         end
     end
 
-
     // UART 状态更新
     always @(posedge PCLK or negedge PRESETn) begin
         if (!PRESETn) begin
             tx_status_reg <= 32'b0;
             rx_status_reg <= 32'b0;
             end else begin
-            tx_status_reg[TX_FIFO_FILL_BIT+FIFO_ADDR_WIDTH-1: TX_FIFO_FILL_BIT] <= tx_fifo_fill_cnt;
-            tx_status_reg[TX_FIFO_EMPTY_BIT] <=tx_empty;
+            tx_status_reg[TX_FIFO_FILL_BIT + FIFO_ADDR_WIDTH - 1 : TX_FIFO_FILL_BIT] <= tx_fifo_fill_cnt;
+            tx_status_reg[TX_FIFO_EMPTY_BIT] <= tx_empty;
             tx_status_reg[TX_FIFO_FULL_BIT] <= tx_full;  
             tx_status_reg[TX_FIFO_WATERMARK_BIT] <= tx_water_mark; 
+            tx_status_reg[TX_FIFO_UNDERFLOW_BIT] <= tx_fifo_overflow; 
+            tx_status_reg[TX_FIFO_OVERFLOW_BIT] <= tx_fifo_underflow;            
             tx_status_reg[TX_SHIFT_IDLE_BIT] <= tx_shift_idle; 
 
-            tx_status_reg[RX_FIFO_FILL_BIT+FIFO_ADDR_WIDTH-1: RX_FIFO_FILL_BIT] <= rx_fifo_fill_cnt;
-            tx_status_reg[RX_FIFO_EMPTY_BIT] <= rx_empty; 
-            tx_status_reg[RX_FIFO_FULL_BIT] <= rx_full; 
-            tx_status_reg[RX_FIFO_WATERMARK_BIT] <= rx_water_mark; 
-            tx_status_reg[RX_SHIFT_FULL_BIT] <= rx_shift_full;
-            tx_status_reg[RX_SHIFT_ERR_BREAK_BIT] <= rx_shift_err_break;           
-
+            rx_status_reg[RX_FIFO_FILL_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_FILL_BIT] <= rx_fifo_fill_cnt;
+            rx_status_reg[RX_FIFO_EMPTY_BIT] <= rx_empty; 
+            rx_status_reg[RX_FIFO_FULL_BIT] <= rx_full; 
+            rx_status_reg[RX_FIFO_WATERMARK_BIT] <= rx_water_mark; 
+            tx_status_reg[RX_FIFO_UNDERFLOW_BIT] <= rx_fifo_overflow; 
+            tx_status_reg[RX_FIFO_OVERFLOW_BIT] <= rx_fifo_underflow;   
+            rx_status_reg[RX_SHIFT_FULL_BIT] <= rx_shift_full;
+            rx_status_reg[RX_SHIFT_ERR_BREAK_BIT] <= rx_shift_err_break;           
             // 可以添加更多状态信息更新
         end
     end
