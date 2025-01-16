@@ -31,6 +31,12 @@ module APB_Slave_UART #(
     reg [31:0] tx_data_reg;
     reg [31:0] rx_data_reg;
 
+    // Synchronized registers
+    reg [31:0] control_reg_sync;
+    reg [31:0] clk_div_reg_sync;
+    reg [31:0] tx_fifo_ctrl_reg_sync;
+    reg [31:0] rx_fifo_ctrl_reg_sync;
+
     // Register offset definitions
     localparam CONTROL_REG_OFFSET      = 32'h00;
     localparam CLK_DIV_REG_OFFSET      = 32'h04;   
@@ -163,8 +169,8 @@ module APB_Slave_UART #(
     reg uart_bit_clk;
 
     // 提取 int_div 和 frac_div
-    assign frac_div = clk_div_reg[CLK_DIV_FRAC_BIT + CLK_DIV_FRAC_WIDTH - 1 : CLK_DIV_FRAC_BIT];
-    assign int_div = clk_div_reg[CLK_DIV_INT_BIT + CLK_DIV_INT_WIDTH - 1 : CLK_DIV_INT_BIT];
+    assign frac_div = clk_div_reg_sync[CLK_DIV_FRAC_BIT + CLK_DIV_FRAC_WIDTH - 1 : CLK_DIV_FRAC_BIT];
+    assign int_div = clk_div_reg_sync[CLK_DIV_INT_BIT + CLK_DIV_INT_WIDTH - 1 : CLK_DIV_INT_BIT];
     assign div_value = (int_div * 16) + frac_div;
 
     // 生成 uart_bit_clk_x16 和 uart_bit_clk 时钟信号
@@ -179,13 +185,13 @@ module APB_Slave_UART #(
     end
 
     // 提取 FIFO  reset
-    assign tx_fifo_resetn = tx_fifo_ctrl_reg[TX_FIFO_RESET_BIT];
-    assign rx_fifo_resetn = rx_fifo_ctrl_reg[RX_FIFO_RESET_BIT]; 
+    assign tx_fifo_resetn = tx_fifo_ctrl_reg_sync[TX_FIFO_RESET_BIT];
+    assign rx_fifo_resetn = rx_fifo_ctrl_reg_sync[RX_FIFO_RESET_BIT]; 
 
     // 提取 FIFO 阈值
-    assign tx_water_mark_th = tx_fifo_ctrl_reg[TX_FIFO_WATERMARK_TH_BIT + FIFO_ADDR_WIDTH - 1 : TX_FIFO_WATERMARK_TH_BIT];
-    assign rx_water_mark_th = rx_fifo_ctrl_reg[RX_FIFO_WATERMARK_TH_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_WATERMARK_TH_BIT]; 
-    assign rx_flow_ctrl_th = rx_fifo_ctrl_reg[RX_FIFO_FLOWCTRL_TH_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_FLOWCTRL_TH_BIT];
+    assign tx_water_mark_th = tx_fifo_ctrl_reg_sync[TX_FIFO_WATERMARK_TH_BIT + FIFO_ADDR_WIDTH - 1 : TX_FIFO_WATERMARK_TH_BIT];
+    assign rx_water_mark_th = rx_fifo_ctrl_reg_sync[RX_FIFO_WATERMARK_TH_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_WATERMARK_TH_BIT]; 
+    assign rx_flow_ctrl_th = rx_fifo_ctrl_reg_sync[RX_FIFO_FLOWCTRL_TH_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_FLOWCTRL_TH_BIT];
 
     // Flow control logic
     assign tx_flow_ctrl_rts_n = (tx_fifo_fill_cnt < tx_flow_ctrl_th);
@@ -199,38 +205,45 @@ module APB_Slave_UART #(
     wire tx_shift_idle; // tx_shift 处于空闲状态
     wire rx_shift_full; // rx_shift 已接收完整一帧数据
 
-    // Instantiate tx_shift sub-module
-    tx_shift tx_shift_inst (
-        .clk(uart_clk),
+    // Instantiate the tx_shift module
+    tx_shift tx_inst (
         .reset_n(PRESETn),
-        .data_in(tx_rd_data),
-        .load(tx_rd_en),
+        .uart_clk(uart_clk),
         .uart_bit_clk(uart_bit_clk),
-        .tx(TX),
-        .idle(tx_shift_idle)
+        .data_in(tx_rd_data),
+        .start(tx_rd_en),
+        .tx(tx),
+        .busy(tx_busy_internal)
     );
 
-    // Instantiate rx_shift sub-module
-    rx_shift rx_shift_inst (
-        .clk(uart_clk),
+    // Instantiate the rx_shift module
+    rx_shift rx_inst (
         .reset_n(PRESETn),
+        .uart_clk(uart_clk),
         .uart_bit_clk_x16(uart_bit_clk_x16),
-        .uart_bit_clk(uart_bit_clk),
-        .rx(RX),
+        .rx(rx),
         .data_out(rx_wr_data),
         .full(rx_shift_full),
         .err_break(rx_shift_err_break)
-    );
+    );   
 
     // UART fifo access 
+    // write to tx-fifo: from APB write operation to tx-fifo
     assign tx_wr_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + TX_DATA_REG_OFFSET );
-    assign tx_rd_en = (tx_shift_idle && !tx_empty); // 当 tx_shift 空闲且 tx_fifo 不空时，从 tx_fifo 读取数据
     always @(posedge uart_clk) begin
         if (tx_wr_en) begin
             tx_wr_data <= PWDATA[FIFO_DATA_WIDTH-1:0];
-        end
-            end
+        end    
+    end
 
+    // read from tx-fifo: from tx-fifo to tx-shift
+    assign tx_shift_idle = !tx_busy_internal
+    assign tx_rd_en = (tx_shift_idle && !tx_empty); //当tx_shift空闲且tx_fifo不空时，从 tx_fifo 读取; 具体读取动作，由tx—shift模块完成
+
+    //write to rx-fifo: from rx-shift to rx-fifo
+    assign rx_wr_en = rx_shift_full; // 当 rx_shift 接收完整一帧数据时，写入 rx_fifo; 具体写入动作，由 rx_shift 模块完成
+
+    // read from rx-fifo: from rx-fifo to APB read operation
     assign rx_rd_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + RX_DATA_REG_OFFSET ); // APB 访问 rx-data register
     always @(posedge uart_clk) begin
         if (rx_rd_en) begin
@@ -312,6 +325,21 @@ module APB_Slave_UART #(
         end else begin
             tx_status_reg_sync <= tx_status_reg;
             rx_status_reg_sync <= rx_status_reg;
+        end
+    end
+
+    // Synchronize control registers to uart_clk domain
+    always @(posedge uart_clk or negedge PRESETn) begin
+        if (!PRESETn) begin
+            control_reg_sync <= CONTROL_REG_DEFAULT_VALUE;
+            clk_div_reg_sync <= CLK_DIV_REG_DEFAULT_VALUE;
+            tx_fifo_ctrl_reg_sync <= TX_FIFO_CTLR_REG_DEFAULT_VALUE;
+            rx_fifo_ctrl_reg_sync <= RX_FIFO_CTLR_DEFAULT_VALUE;
+        end else begin
+            control_reg_sync <= control_reg;
+            clk_div_reg_sync <= clk_div_reg;
+            tx_fifo_ctrl_reg_sync <= tx_fifo_ctrl_reg;
+            rx_fifo_ctrl_reg_sync <= rx_fifo_ctrl_reg;
         end
     end
 
