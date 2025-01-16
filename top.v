@@ -13,7 +13,9 @@ module my_soc (
     input TCK,
     input TMS,
     input TDI,
-    output TDO
+    output TDO,
+    // UART clock
+    input uart_clk // Added uart_clk input
 );
 
     // AHB signals for CPU
@@ -196,7 +198,13 @@ module my_soc (
     );
 
     // Instantiate UART as APB slave
-    UART_APB uart (
+    APB_Slave_UART #(
+        .ADDR_WIDTH(32),
+        .DATA_WIDTH(32),
+        .BASE_ADDR(`UART_START_ADDR),
+        .FIFO_DATA_WIDTH(8),
+        .FIFO_DEPTH(16)
+    ) uart (
         .PCLK(apb_clk),
         .PRESETn(apb_resetn),
         .PSEL(apb_uart_sel),
@@ -205,10 +213,9 @@ module my_soc (
         .PADDR(PADDR),
         .PWDATA(PWDATA),
         .PRDATA(PRDATA),
-        .PREADY(PREADY),
-        .PSLVERR(PSLVERR),
-        .tx(uart_tx),
-        .rx(uart_rx)
+        .RX(uart_rx),
+        .TX(uart_tx),
+        .uart_clk(uart_clk) // Connected uart_clk to UART module
     );
 
     // Instantiate DMA as AHB master

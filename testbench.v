@@ -9,6 +9,7 @@ module testbench;
     reg apb_resetn;
     wire uart_tx;
     reg uart_rx;
+    reg uart_clk;
     reg TCK;
     reg TMS;
     reg TDI;
@@ -22,6 +23,7 @@ module testbench;
         .apb_resetn(apb_resetn),
         .uart_tx(uart_tx),
         .uart_rx(uart_rx),
+        .uart_clk(uart_clk),       
         .TCK(TCK),
         .TMS(TMS),
         .TDI(TDI),
@@ -38,6 +40,12 @@ module testbench;
     initial begin
         apb_clk = 0;
         forever #10 apb_clk = ~apb_clk; // 20ns period (50MHz clock)
+    end
+
+    // uart Clock generation
+    initial begin
+        uart_clk = 0;
+        forever #20 uart_clk = ~uart_clk; // 40ns period (24MHz clock)
     end
 
     // Testbench initial block
