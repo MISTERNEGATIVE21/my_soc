@@ -28,14 +28,16 @@ module APB_Slave_UART #(
     reg [31:0] rx_fifo_ctrl_reg;        
     reg [31:0] tx_status_reg;
     reg [31:0] rx_status_reg;
-    reg [31:0] tx_data_reg;
-    reg [31:0] rx_data_reg;
+    reg [31:0] tx_data_reg; // 发送数据寄存器 just a copy of PWDATA when writing to tx-fifo
+    reg [31:0] rx_data_reg; // 接收数据寄存器 just a copy of PRDATA when reading from rx-fifo
 
-    // Synchronized registers
+    // Synchronized registers : these registers are synchronized to uart_clk domain
     reg [31:0] control_reg_sync;
     reg [31:0] clk_div_reg_sync;
     reg [31:0] tx_fifo_ctrl_reg_sync;
     reg [31:0] rx_fifo_ctrl_reg_sync;
+    reg [31:0] tx_status_reg_sync;
+    reg [31:0] rx_status_reg_sync;
 
     // Register offset definitions
     localparam CONTROL_REG_OFFSET      = 32'h00;
@@ -94,12 +96,13 @@ module APB_Slave_UART #(
 
     // 发送 FIFO 实例化
     AsyncFIFO #(
-      .FIFO_DATA_WIDTH(FIFO_DATA_WIDTH),
-      .FIFO_ADDR_WIDTH(FIFO_ADDR_WIDTH)
+    .DATA_WIDTH(FIFO_DATA_WIDTH),
+    .ADDR_WIDTH(FIFO_ADDR_WIDTH)
     ) tx_fifo (
     .wr_clk(PCLK),          // Write clock is PCLK
     .rd_clk(uart_clk),      // Read clock is uart_clk
-    .reset_n(tx_fifo_resetn),  
+    .global_reset_n(PRESETn), // Global reset signal
+    .local_reset_n(tx_fifo_resetn), // Local reset signal from UART register
     .wr_en(tx_wr_en),
     .rd_en(tx_rd_en),
     .wr_data(tx_wr_data),
@@ -111,14 +114,15 @@ module APB_Slave_UART #(
     .fifo_underflow(tx_fifo_underflow)     
     );
 
-    // 接收 FIFO 实例化
+// RX FIFO
     AsyncFIFO #(
-      .FIFO_DATA_WIDTH(FIFO_DATA_WIDTH),
-      .FIFO_ADDR_WIDTH(FIFO_ADDR_WIDTH)
+    .DATA_WIDTH(FIFO_DATA_WIDTH),
+    .ADDR_WIDTH(FIFO_ADDR_WIDTH)
     ) rx_fifo (
     .wr_clk(uart_clk),      // Write clock is uart_clk
     .rd_clk(PCLK),          // Read clock is PCLK
-    .reset_n(rx_fifo_resetn),  
+    .global_reset_n(PRESETn), // Global reset signal
+    .local_reset_n(rx_fifo_resetn), // Local reset signal from UART register
     .wr_en(rx_wr_en),
     .rd_en(rx_rd_en),
     .wr_data(rx_wr_data),
@@ -230,11 +234,12 @@ module APB_Slave_UART #(
     // UART fifo access 
     // write to tx-fifo: from APB write operation to tx-fifo
     assign tx_wr_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + TX_DATA_REG_OFFSET );
-    always @(posedge uart_clk) begin
+    always @(posedge PCLK) begin
         if (tx_wr_en) begin
-            tx_wr_data <= PWDATA[FIFO_DATA_WIDTH-1:0];
-        end    
-    end
+           tx_wr_data <= PWDATA[FIFO_DATA_WIDTH-1:0];
+           tx_data_reg <= PWDATA;
+       end    
+   end
 
     // read from tx-fifo: from tx-fifo to tx-shift
     assign tx_shift_idle = !tx_busy_internal
@@ -245,9 +250,10 @@ module APB_Slave_UART #(
 
     // read from rx-fifo: from rx-fifo to APB read operation
     assign rx_rd_en = PSEL && PENABLE && PWRITE && (PADDR == BASE_ADDR + RX_DATA_REG_OFFSET ); // APB 访问 rx-data register
-    always @(posedge uart_clk) begin
+    always @(posedge PCLK) begin
         if (rx_rd_en) begin
             PRDATA[FIFO_DATA_WIDTH-1:0] <= rx_rd_data;
+            rx_data_reg <= rx_rd_data;
         end
     end
 
@@ -265,7 +271,7 @@ module APB_Slave_UART #(
                 BASE_ADDR + CLK_DIV_REG_OFFSET: clk_div_reg <= PWDATA; // 发送数据寄存器
                 BASE_ADDR + TX_FIFO_CTLR_REG_OFFSET: tx_fifo_ctrl_reg <= PWDATA; // tx-fifo ctrl 寄存器
                 BASE_ADDR + RX_FIFO_CTLR_REG_OFFSET: rx_fifo_ctrl_reg <= PWDATA; // rx-fifo ctrl 寄存器    
-                BASE_ADDR + TX_DATA_REG_OFFSET: tx_data_reg <= PWDATA; // tx-data 寄存器                             
+                // BASE_ADDR + TX_DATA_REG_OFFSET: tx_data_reg <= PWDATA; // data has been written to tx_fifo                             
                 // 可以添加更多寄存器的写操作
                 default: ;
             endcase
@@ -280,9 +286,9 @@ module APB_Slave_UART #(
                 BASE_ADDR + CLK_DIV_REG_OFFSET: PRDATA = clk_div_reg;
                 BASE_ADDR + TX_FIFO_CTLR_REG_OFFSET: PRDATA = tx_fifo_ctrl_reg;
                 BASE_ADDR + RX_FIFO_CTLR_REG_OFFSET: PRDATA = rx_fifo_ctrl_reg; 
-                BASE_ADDR + RX_DATA_REG_OFFSET: PRDATA = rx_data_reg; // 接收数据寄存器
-                BASE_ADDR + TX_STATUS_REG_OFFSET: PRDATA = tx_status_reg_sync; // 发送状态寄存器
-                BASE_ADDR + RX_STATUS_REG_OFFSET: PRDATA = rx_status_reg_sync; // 接收状态寄存器
+                BASE_ADDR + TX_STATUS_REG_OFFSET: PRDATA = tx_status_reg; // 发送状态寄存器
+                BASE_ADDR + RX_STATUS_REG_OFFSET: PRDATA = rx_status_reg; // 接收状态寄存器
+                // BASE_ADDR + RX_DATA_REG_OFFSET: PRDATA = rx_data_reg; // data has loaded from rx_fifo
                 default: PRDATA = 32'b0;
             endcase
         end else begin
@@ -290,45 +296,7 @@ module APB_Slave_UART #(
         end
     end
 
-    // UART 状态更新
-    always @(posedge uart_clk or negedge PRESETn) begin
-        if (!PRESETn) begin
-            tx_status_reg <= 32'b0;
-            rx_status_reg <= 32'b0;
-            end else begin
-            tx_status_reg[TX_FIFO_FILL_BIT + FIFO_ADDR_WIDTH - 1 : TX_FIFO_FILL_BIT] <= tx_fifo_fill_cnt;
-            tx_status_reg[TX_FIFO_EMPTY_BIT] <= tx_empty;
-            tx_status_reg[TX_FIFO_FULL_BIT] <= tx_full;  
-            tx_status_reg[TX_FIFO_WATERMARK_BIT] <= tx_water_mark; 
-            tx_status_reg[TX_FIFO_UNDERFLOW_BIT] <= tx_fifo_underflow; 
-            tx_status_reg[TX_FIFO_OVERFLOW_BIT] <= tx_fifo_overflow;            
-            tx_status_reg[TX_SHIFT_IDLE_BIT] <= tx_shift_idle; 
-
-            rx_status_reg[RX_FIFO_FILL_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_FILL_BIT] <= rx_fifo_fill_cnt;
-            rx_status_reg[RX_FIFO_EMPTY_BIT] <= rx_empty; 
-            rx_status_reg[RX_FIFO_FULL_BIT] <= rx_full; 
-            rx_status_reg[RX_FIFO_WATERMARK_BIT] <= rx_water_mark; 
-            rx_status_reg[RX_FIFO_UNDERFLOW_BIT] <= rx_fifo_underflow; 
-            rx_status_reg[RX_FIFO_OVERFLOW_BIT] <= rx_fifo_overflow;   
-            rx_status_reg[RX_SHIFT_FULL_BIT] <= rx_shift_full;
-            rx_status_reg[RX_SHIFT_ERR_BREAK_BIT] <= rx_shift_err_break;           
-        end
-    end
-
-    // Synchronize status registers to PCLK domain
-    reg [31:0] tx_status_reg_sync;
-    reg [31:0] rx_status_reg_sync;
-    always @(posedge PCLK or negedge PRESETn) begin
-        if (!PRESETn) begin
-            tx_status_reg_sync <= 32'b0;
-            rx_status_reg_sync <= 32'b0;
-        end else begin
-            tx_status_reg_sync <= tx_status_reg;
-            rx_status_reg_sync <= rx_status_reg;
-        end
-    end
-
-    // Synchronize control registers to uart_clk domain
+    // Synchronize control registers: Pclk to uart_clk domain
     always @(posedge uart_clk or negedge PRESETn) begin
         if (!PRESETn) begin
             control_reg_sync <= CONTROL_REG_DEFAULT_VALUE;
@@ -340,6 +308,42 @@ module APB_Slave_UART #(
             clk_div_reg_sync <= clk_div_reg;
             tx_fifo_ctrl_reg_sync <= tx_fifo_ctrl_reg;
             rx_fifo_ctrl_reg_sync <= rx_fifo_ctrl_reg;
+        end
+    end
+
+    // UART status-update : in uart_clk domain
+    always @(posedge uart_clk or negedge PRESETn) begin
+        if (!PRESETn) begin
+                rx_status_reg_sync <= 32'b0;
+                rx_status_reg_sync <= 32'b0;
+            end else begin
+                tx_status_reg_sync[TX_FIFO_FILL_BIT + FIFO_ADDR_WIDTH - 1 : TX_FIFO_FILL_BIT] <= tx_fifo_fill_cnt;
+                tx_status_reg_sync[TX_FIFO_EMPTY_BIT] <= tx_empty;
+                tx_status_reg_sync[TX_FIFO_FULL_BIT] <= tx_full;  
+                tx_status_reg_sync[TX_FIFO_WATERMARK_BIT] <= tx_water_mark; 
+                tx_status_reg_sync[TX_FIFO_UNDERFLOW_BIT] <= tx_fifo_underflow; 
+                tx_status_reg_sync[TX_FIFO_OVERFLOW_BIT] <= tx_fifo_overflow;            
+                tx_status_reg_sync[TX_SHIFT_IDLE_BIT] <= tx_shift_idle; 
+
+                rx_status_reg_sync[RX_FIFO_FILL_BIT + FIFO_ADDR_WIDTH - 1 : RX_FIFO_FILL_BIT] <= rx_fifo_fill_cnt;
+                rx_status_reg_sync[RX_FIFO_EMPTY_BIT] <= rx_empty; 
+                rx_status_reg_sync[RX_FIFO_FULL_BIT] <= rx_full; 
+                rx_status_reg_sync[RX_FIFO_WATERMARK_BIT] <= rx_water_mark; 
+                rx_status_reg_sync[RX_FIFO_UNDERFLOW_BIT] <= rx_fifo_underflow; 
+                rx_status_reg_sync[RX_FIFO_OVERFLOW_BIT] <= rx_fifo_overflow;   
+                rx_status_reg_sync[RX_SHIFT_FULL_BIT] <= rx_shift_full;
+                rx_status_reg_sync[RX_SHIFT_ERR_BREAK_BIT] <= rx_shift_err_break;           
+        end
+    end
+
+    // Synchronize status registers : uart-clk to PCLK domain
+    always @(posedge PCLK or negedge PRESETn) begin
+        if (!PRESETn) begin
+            tx_status_reg <= 32'b0;
+            rx_status_reg <= 32'b0;
+        end else begin
+            tx_status_reg <= tx_status_reg_sync;
+            rx_status_reg <= rx_status_reg_sync;
         end
     end
 

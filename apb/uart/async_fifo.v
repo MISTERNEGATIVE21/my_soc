@@ -38,6 +38,14 @@ The read pointer in gray code is compared with the synchronized write pointer in
 FIFO Fill Count
 The difference between the write pointer and the read pointer gives the number of elements in the FIFO.
 
+Problem:
+APB Bus Requirement: The APB bus expects the data to be read in one clock cycle.
+FIFO Latency: The FIFO introduces a two-cycle latency due to the two-stage synchronization.
+Solution:
+Given that the software can check the RX FIFO's fill count (rx_fifo_fill_cnt), 
+and the fill count is synchronized from the uart_clk domain to the PCLK domain, it should be safe to read the FIFO immediately. 
+The synchronization of the fill count ensures that the software has an accurate view of the number of elements in the FIFO. (this will be done in upper module)
+
 */
 
 module AsyncFIFO #(
@@ -46,7 +54,8 @@ module AsyncFIFO #(
 ) (
     input wire wr_clk,
     input wire rd_clk,
-    input wire reset_n,  // Active-low reset signal
+    input wire global_reset_n,  // Global active-low reset signal (PRESETn)
+    input wire local_reset_n,   // Local active-low reset signal (reset_n from UART register)
     input wire wr_en,
     input wire rd_en,
     input wire [DATA_WIDTH-1:0] wr_data,
@@ -63,6 +72,9 @@ module AsyncFIFO #(
     // Write and read pointers
     reg [ADDR_WIDTH:0] wr_ptr;
     reg [ADDR_WIDTH:0] rd_ptr;
+
+    // Combined reset signal
+    wire combined_reset_n = global_reset_n & local_reset_n;
 
     // Binary to Gray code conversion
     function [ADDR_WIDTH:0] bin2gray;
@@ -87,14 +99,15 @@ module AsyncFIFO #(
     endfunction
 
     // Write operation
-    always @(posedge wr_clk or negedge reset_n) begin
-        if (!reset_n) begin
+    always @(posedge wr_clk or negedge combined_reset_n) begin
+        if (!combined_reset_n) begin
             wr_ptr <= 0;
+            full <= 0;
             fifo_overflow <= 0;
         end else if (wr_en) begin
             if (!full) begin
-            mem[wr_ptr[ADDR_WIDTH-1:0]] <= wr_data;
-            wr_ptr <= wr_ptr + 1;
+                mem[wr_ptr[ADDR_WIDTH-1:0]] <= wr_data;
+                wr_ptr <= wr_ptr + 1;
                 fifo_overflow <= 0;
             end else begin
                 // FIFO is full, set overflow flag
@@ -104,30 +117,29 @@ module AsyncFIFO #(
     end
 
     // Read operation with registered output
-    reg [DATA_WIDTH-1:0] rd_data_next;
-    always @(posedge rd_clk or negedge reset_n) begin
-        if (!reset_n) begin
+    always @(posedge rd_clk or negedge combined_reset_n) begin
+        if (!combined_reset_n) begin
             rd_ptr <= 0;
             fifo_underflow <= 0;
+            rd_data <= 0; // Initialize rd_data
         end else if (rd_en) begin
             if (!empty) begin
-                rd_data_next <= mem[rd_ptr[ADDR_WIDTH-1:0]];
-            rd_ptr <= rd_ptr + 1;
+                rd_data <= mem[rd_ptr[ADDR_WIDTH-1:0]]; // Immediate read from memory
+                rd_ptr <= rd_ptr + 1;
                 fifo_underflow <= 0;
             end else begin
                 // FIFO is empty, set underflow flag
                 fifo_underflow <= 1;
             end
         end
-        rd_data <= rd_data_next; // Register the output
     end
 
     // Generate full signal
     wire [ADDR_WIDTH:0] wr_ptr_gray = bin2gray(wr_ptr);
     wire [ADDR_WIDTH:0] rd_ptr_gray_sync;
     reg [ADDR_WIDTH:0] rd_ptr_gray_sync_r1, rd_ptr_gray_sync_r2;
-    always @(posedge wr_clk or negedge reset_n) begin
-        if (!reset_n) begin
+    always @(posedge wr_clk or negedge combined_reset_n) begin
+        if (!combined_reset_n) begin
             rd_ptr_gray_sync_r1 <= 0;
             rd_ptr_gray_sync_r2 <= 0;
         end else begin
@@ -141,8 +153,8 @@ module AsyncFIFO #(
     wire [ADDR_WIDTH:0] rd_ptr_gray = bin2gray(rd_ptr);
     wire [ADDR_WIDTH:0] wr_ptr_gray_sync;
     reg [ADDR_WIDTH:0] wr_ptr_gray_sync_r1, wr_ptr_gray_sync_r2;
-    always @(posedge rd_clk or negedge reset_n) begin
-        if (!reset_n) begin
+    always @(posedge rd_clk or negedge combined_reset_n) begin
+        if (!combined_reset_n) begin
             wr_ptr_gray_sync_r1 <= 0;
             wr_ptr_gray_sync_r2 <= 0;
         end else begin
