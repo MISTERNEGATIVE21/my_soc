@@ -59,7 +59,7 @@ module APB_Slave_UART #(
     localparam CLK_DIV_FRAC_WIDTH = 4;        
     localparam CLK_DIV_INT_BIT    = 16;
     localparam CLK_DIV_INT_WIDTH  = 16;
-    localparam CLK_DIV_REG_DEFAULT_VALUE      = 5 << CLK_DIV_FRAC_BIT + 208 << CLK_DIV_INT_BIT;
+    localparam CLK_DIV_REG_DEFAULT_VALUE      = 13 << CLK_DIV_INT_BIT + 0 << CLK_DIV_FRAC_BIT;
  
     // FIFO control register bit positions
     localparam TX_FIFO_WATERMARK_TH_BIT   = 0;
@@ -173,20 +173,18 @@ module APB_Slave_UART #(
     reg uart_bit_clk;
 
     // 提取 int_div 和 frac_div
-    assign frac_div = clk_div_reg_sync[CLK_DIV_FRAC_BIT + CLK_DIV_FRAC_WIDTH - 1 : CLK_DIV_FRAC_BIT];
     assign int_div = clk_div_reg_sync[CLK_DIV_INT_BIT + CLK_DIV_INT_WIDTH - 1 : CLK_DIV_INT_BIT];
-    assign div_value = (int_div * 16) + frac_div;
+    assign frac_div = clk_div_reg_sync[CLK_DIV_FRAC_BIT + CLK_DIV_FRAC_WIDTH - 1 : CLK_DIV_FRAC_BIT];
 
-    // 生成 uart_bit_clk_x16 和 uart_bit_clk 时钟信号
-    always @(posedge uart_clk or negedge PRESETn) begin
-        if (!PRESETn) begin
-            uart_bit_clk_x16 <= 1'b0;
-            uart_bit_clk <= 1'b0;
-        end else begin
-            uart_bit_clk_x16 <= (div_value == 0) ? 1'b0 : (uart_clk % div_value == 0);
-            uart_bit_clk <= (div_value == 0) ? 1'b0 : (uart_clk % (div_value * 16) == 0);
-        end
-    end
+    // Instantiate the clk_generator module
+    clk_generator clk_gen_inst (
+        .uart_clk(uart_clk),
+        .reset_n(PRESETn),
+        .int_div(int_div),
+        .frac_div(frac_div),
+        .uart_bit_clk_x16(uart_bit_clk_x16),
+        .uart_bit_clk(uart_bit_clk)
+    );
 
     // 提取 FIFO  reset
     assign tx_fifo_resetn = tx_fifo_ctrl_reg_sync[TX_FIFO_RESET_BIT];
