@@ -9,7 +9,7 @@ module WB_stage (
     input wire [31:0] EX_MEM_ALUResult,
     input wire MemtoReg,
     input wire combined_stall, // New input for combined stall signal
-    input wire memory_enable_out, // Updated input from memory stage
+    input wire MEM_WB_enable_out, // Updated input from memory stage
     output reg [31:0] regfile [0:31]
 );
 
@@ -23,7 +23,7 @@ module WB_stage (
         end else if (combined_stall) begin
             // Insert bubble (NOP) into the pipeline
             // No operation needed, just stall the pipeline
-        end else if (memory_enable_out) begin
+        end else if (MEM_WB_enable_out) begin
             if (MEM_WB_RegWrite) begin
                 regfile[MEM_WB_Rd] <= (MemtoReg) ? MEM_WB_ReadData : EX_MEM_ALUResult;
             end

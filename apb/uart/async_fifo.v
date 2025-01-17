@@ -102,7 +102,6 @@ module AsyncFIFO #(
     always @(posedge wr_clk or negedge combined_reset_n) begin
         if (!combined_reset_n) begin
             wr_ptr <= 0;
-            full <= 0;
             fifo_overflow <= 0;
         end else if (wr_en) begin
             if (!full) begin
@@ -116,7 +115,7 @@ module AsyncFIFO #(
         end
     end
 
-    // Read operation with registered output
+    // Read operation with immediate read
     always @(posedge rd_clk or negedge combined_reset_n) begin
         if (!combined_reset_n) begin
             rd_ptr <= 0;

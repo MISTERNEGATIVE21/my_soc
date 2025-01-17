@@ -66,12 +66,12 @@ User:
 ## 1.2. version
 ### 1.2.1. v0.01 base arch
 ### 1.2.2. v0.02 code review
-1. 检查 remove ex_enable,  just remain decode_enable_out
+1. 检查 remove ex_enable,  just remain ID_EX_enable_out
 2. 检查 i-cache miss, if-stage 会尝试访问 ahb 总线， 
     - 删除 if-stage 里面的ahb访问，它应该等待cache 完成 ahb访问; 然后从cache取; 
     - 否则的话会出现总线冲突，降低效率 or 死锁。
     - d-cache 存在相同的问题
-      - update : memory_enable_out set to 0 & wait for d-cache 
+      - update : MEM_WB_enable_out set to 0 & wait for d-cache 
 3. 检查 me-stage, 当 cache miss 的时候，必须 stall，否则接下来的指令会导致 mem flush.
     - 新增一个 mem_stall , src : mem_stage, dst: rv32i , Or-ed with other stall source 
       - if-stage，if i-cache miss 是否需要stall ? 不需要，因为if 阶段会自动让下一个 stage halt;
@@ -89,7 +89,14 @@ User:
     - update ahb-arbiter/decoder & top for dma update
 8. 添加 addrmep.v 文件，将各个模块的base_addr 统一管理
     - 修改 decoder
-9. 
+9. 更新 uart
+   1.  添加 async-fifo , tx-shift ,rx-shift , clk-generate 模组
+   2.  添加 sync cfg register to uart-clk ; sync status register ro apb-clk
+   3.  clk generate 目前还有问题，没有实现小数倍分频
+10. 检查 croe/id-stage 发现 opcode没有译码
+
+
+
 
 ## 1.3. remark
 ### 1.3.1. note

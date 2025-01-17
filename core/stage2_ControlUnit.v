@@ -10,14 +10,22 @@ MemtoReg: Controls whether data from memory or the ALU result is written to the 
 MemWrite: Indicates whether a memory write operation is to be performed.
 ALUSrc: Determines whether the second ALU operand is a register value or an immediate value.
 RegWrite: Indicates whether a register write operation is to be performed.
-Opcode Decoding:
 
-7'b0110011 (R-type): These instructions use two register operands and write the result back to a register.
-7'b0000011 (Load): These instructions load data from memory into a register.
-7'b0100011 (Store): These instructions store data from a register into memory.
-7'b0010011 (I-type): These instructions use an immediate value for ALU operations.
-7'b1100011 (Branch): These instructions perform branch operations based on the comparison of two register values.
+Opcode Decoding:
+7'b0110111 (LUI): Load Upper Immediate
+7'b0010111 (AUIPC): Add Upper Immediate to PC
+7'b1101111 (JAL): Jump and Link
+7'b1100111 (JALR): Jump and Link Register
+7'b1100011 (Branch): Conditional Branch
+7'b0000011 (Load): Load from Memory
+7'b0100011 (Store): Store to Memory
+7'b0010011 (I-type): Immediate ALU Operations
+7'b0110011 (R-type): Register-Register ALU Operations
+7'b0001111 (FENCE): Fence
+7'b1110011 (SYSTEM): System Instructions (ECALL, EBREAK, etc.)
+
 This control unit will generate the appropriate control signals based on the opcode of the instruction being executed.
+
 */
 
 module ControlUnit (
@@ -35,13 +43,45 @@ module ControlUnit (
     // Control signal logic based on opcode
     always @(*) begin
         case (opcode)
-            7'b0110011: begin // R-type
-                ALUOp = 2'b10;
+            7'b0110111: begin // LUI
+                ALUOp = 2'b00;
+                MemRead = 0;
+                MemtoReg = 0;
+                MemWrite = 0;
+                ALUSrc = 1;
+                RegWrite = 1;
+            end
+            7'b0010111: begin // AUIPC
+                ALUOp = 2'b00;
+                MemRead = 0;
+                MemtoReg = 0;
+                MemWrite = 0;
+                ALUSrc = 1;
+                RegWrite = 1;
+            end
+            7'b1101111: begin // JAL
+                ALUOp = 2'b00;
                 MemRead = 0;
                 MemtoReg = 0;
                 MemWrite = 0;
                 ALUSrc = 0;
                 RegWrite = 1;
+            end
+            7'b1100111: begin // JALR
+                ALUOp = 2'b00;
+                MemRead = 0;
+                MemtoReg = 0;
+                MemWrite = 0;
+                ALUSrc = 1;
+                RegWrite = 1;
+            end
+            7'b1100011: begin // Branch
+                ALUOp = 2'b01;
+                MemRead = 0;
+                MemtoReg = 0;
+                MemWrite = 0;
+                ALUSrc = 0;
+                RegWrite = 0;
             end
             7'b0000011: begin // Load
                 ALUOp = 2'b00;
@@ -67,8 +107,24 @@ module ControlUnit (
                 ALUSrc = 1;
                 RegWrite = 1;
             end
-            7'b1100011: begin // Branch
-                ALUOp = 2'b01;
+            7'b0110011: begin // R-type
+                ALUOp = 2'b10;
+                MemRead = 0;
+                MemtoReg = 0;
+                MemWrite = 0;
+                ALUSrc = 0;
+                RegWrite = 1;
+            end
+            7'b0001111: begin // FENCE
+                ALUOp = 2'b00;
+                MemRead = 0;
+                MemtoReg = 0;
+                MemWrite = 0;
+                ALUSrc = 0;
+                RegWrite = 0;
+            end
+            7'b1110011: begin // SYSTEM
+                ALUOp = 2'b00;
                 MemRead = 0;
                 MemtoReg = 0;
                 MemWrite = 0;

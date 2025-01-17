@@ -97,6 +97,7 @@ module tx_shift (
         end else begin
             case (tx_state)
                 3'b000: begin // Idle state
+                tx <= 1'b1; // Ensure tx is high in idle state
                     if (start_sync2) begin
                         shift_reg <= data_in_sync2;
                         bit_index <= 4'b0;

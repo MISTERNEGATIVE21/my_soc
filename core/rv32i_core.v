@@ -92,7 +92,7 @@ module PipelineRV32ICore_AHB #(
 
      // Internal signals for CPU control
     reg [31:0] regfile [0:31]; // Register file
-    reg fetch_enable, fetch_enable_out, decode_enable_out, execute_enable_out; // Pipeline stage enables
+    reg fetch_enable, IF_ID_enable_out, ID_EX_enable_out, EX_MEM_enable_out, MEM_WB_enable_out; // Pipeline stage enables
 
     // Debug stall signal
     reg debug_stall; 
@@ -157,6 +157,7 @@ module PipelineRV32ICore_AHB #(
         .hit(d_cache_hit)
     );
 
+    //stage1----------------------------------------------------------------------------------------------------------------
     // Instantiate pipeline stages
     IF_stage if_stage (
         .clk(clk),
@@ -169,13 +170,45 @@ module PipelineRV32ICore_AHB #(
         .combined_stall(combined_stall), // Pass combined_stall signal
         .IF_ID_PC(IF_ID_PC),
         .IF_ID_Instruction(IF_ID_Instruction),
-        .fetch_enable_out(fetch_enable_out) // Output signal
+        .IF_ID_enable_out(IF_ID_enable_out) // Output signal
     );
 
+    //stage2----------------------------------------------------------------------------------------------------------------
+
+    // Register File
+    RegisterFile rf (
+        .clk(clk),
+        .RegWrite(MEM_WB_RegWrite),      
+        .rs1(IF_ID_Instruction[19:15]), //this will before the ID stage, so use the instruction
+        .rs2(IF_ID_Instruction[24:20]), //this will before the ID stage, so use the instruction
+        .rd(MEM_WB_Rd), //this will be after the write back stage
+        .WriteData((MemtoReg) ? MEM_WB_ReadData : EX_MEM_ALUResult),
+        .ReadData1(ReadData1),
+        .ReadData2(ReadData2)
+    );
+
+    // Immediate Generation Unit
+    ImmediateGenerator imm_gen (
+        .instruction(IF_ID_Instruction),
+        .immediate(Immediate)
+    );
+
+    // Control Unit
+    ControlUnit cu (
+        .opcode(IF_ID_Instruction[6:0]),
+        .ID_EX_ALUOp(ALUOp),
+        .ID_EX_MemRead(MemRead),
+        .ID_EX_MemtoReg(MemtoReg),
+        .ID_EX_MemWrite(MemWrite),
+        .ID_EX_ALUSrc(ALUSrc),
+        .ID_EX_RegWrite(RegWrite)
+    );
+
+    //register file & immediate generation unit & control unit will be before the ID stage
     ID_stage id_stage (
         .clk(clk),
         .reset(~reset_n),
-        .fetch_enable_out(fetch_enable_out),
+        .IF_ID_enable_out(IF_ID_enable_out),
         .IF_ID_PC(IF_ID_PC),
         .IF_ID_Instruction(IF_ID_Instruction),
         .ReadData1(ReadData1),
@@ -191,13 +224,23 @@ module PipelineRV32ICore_AHB #(
         .ID_EX_Rd(ID_EX_Rd),
         .ID_EX_Funct7(ID_EX_Funct7),
         .ID_EX_Funct3(ID_EX_Funct3),
-        .decode_enable_out(decode_enable_out)
+        .ID_EX_enable_out(ID_EX_enable_out)
     );
 
+    //stage3----------------------------------------------------------------------------------------------------------------
+    // ALU Control Unit
+    ALUControlUnit alu_cu (
+        .ALUOp(ALUOp),
+        .Funct7(ID_EX_Funct7),
+        .Funct3(ID_EX_Funct3),
+        .ALUControl(ALUControl)
+    );
+
+    //instatiate the execute stage
     EX_stage ex_stage (
         .clk(clk),
         .reset(~reset_n),
-        .decode_enable_out(decode_enable_out),
+        .ID_EX_enable_out(ID_EX_enable_out),
         .ID_EX_ReadData1(ID_EX_ReadData1),
         .ID_EX_ReadData2(ID_EX_ReadData2),
         .ID_EX_Immediate(ID_EX_Immediate),
@@ -210,13 +253,13 @@ module PipelineRV32ICore_AHB #(
         .EX_MEM_WriteData(EX_MEM_WriteData),
         .EX_MEM_Rd(EX_MEM_Rd),
         .EX_MEM_RegWrite(EX_MEM_RegWrite),
-        .execute_enable_out(execute_enable_out)
+        .EX_MEM_enable_out(EX_MEM_enable_out)
     );
 
     MEM_stage mem_stage (
         .clk(clk),
         .reset(~reset_n),
-        .execute_enable_out(execute_enable_out),
+        .EX_MEM_enable_out(EX_MEM_enable_out),
         .EX_MEM_ALUResult(EX_MEM_ALUResult),
         .EX_MEM_WriteData(EX_MEM_WriteData),
         .EX_MEM_Rd(EX_MEM_Rd),
@@ -230,7 +273,7 @@ module PipelineRV32ICore_AHB #(
         .MEM_WB_ReadData(MEM_WB_ReadData),
         .MEM_WB_Rd(MEM_WB_Rd),
         .MEM_WB_RegWrite(MEM_WB_RegWrite),
-        .memory_enable_out(memory_enable_out)
+        .MEM_WB_enable_out(MEM_WB_enable_out)
         .mem_stall(mem_stall)      
     );
 
@@ -243,45 +286,8 @@ module PipelineRV32ICore_AHB #(
         .EX_MEM_ALUResult(EX_MEM_ALUResult),
         .MemtoReg(MemtoReg),
         .combined_stall(combined_stall),
-        .memory_enable_out(memory_enable_out),
+        .MEM_WB_enable_out(MEM_WB_enable_out),
         .regfile(regfile)
-    );
-
-    // Control Unit
-    ControlUnit cu (
-        .opcode(IF_ID_Instruction[6:0]),
-        .ALUOp(ALUOp),
-        .MemRead(MemRead),
-        .MemtoReg(MemtoReg),
-        .MemWrite(MemWrite),
-        .ALUSrc(ALUSrc),
-        .RegWrite(RegWrite)
-    );
-
-    // ALU Control Unit
-    ALUControlUnit alu_cu (
-        .ALUOp(ALUOp),
-        .Funct7(ID_EX_Funct7),
-        .Funct3(ID_EX_Funct3),
-        .ALUControl(ALUControl)
-    );
-
-    // Register File
-    RegisterFile rf (
-        .clk(clk),
-        .RegWrite(MEM_WB_RegWrite),
-        .rs1(IF_ID_Instruction[19:15]),
-        .rs2(IF_ID_Instruction[24:20]),
-        .rd(MEM_WB_Rd),
-        .WriteData((MemtoReg) ? MEM_WB_ReadData : EX_MEM_ALUResult),
-        .ReadData1(ReadData1),
-        .ReadData2(ReadData2)
-    );
-
-    // Immediate Generation Unit
-    ImmediateGenerator imm_gen (
-        .instruction(IF_ID_Instruction),
-        .immediate(Immediate)
     );
 
     // Hazard Detection Unit
