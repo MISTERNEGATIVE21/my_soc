@@ -22,11 +22,11 @@ module IF_stage (
     input wire clk,
     input wire reset_n,              // Active-low reset signal
     input wire fetch_enable,
+    input wire combined_stall, // New input for combined stall signal
     input wire [31:0] PC,
     input wire i_cache_ready,
     input wire i_cache_hit,
     input wire [31:0] i_cache_rdata,   
-    input wire combined_stall, // New input for combined stall signal
     output reg [31:0] IF_ID_PC,
     output reg [31:0] IF_ID_Instruction,
     output reg IF_ID_enable_out
