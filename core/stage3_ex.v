@@ -40,7 +40,7 @@ module EX_stage (
 
     // Instantiate ALUControl
     ALUControlUnit alu_cu (
-        .ALUOp(ALUOp),                   // Input signal
+        .ALUOp(ID_EX_ALUOp),                   // Input signal
         .Funct7(ID_EX_Funct7),           // Input signal
         .Funct3(ID_EX_Funct3),           // Input signal
         .ALUControl(ALUControl)          // Output signal
