@@ -41,6 +41,7 @@ module PipelineRV32ICore_AHB #(
     reg ID_EX_MemWrite;            // out: Memory write enable to EX stage
     reg ID_EX_RegWrite;            // out: Register write enable to EX stage
     reg ID_EX_MemToReg;            // out: Memory to register signal to EX stage
+    reg ID_EX_Branch;              // out: Branch signal to EX stage
     reg [31:0] EX_MEM_PC;          // out: Program counter to MEM stage
     reg [31:0] EX_MEM_ALUResult;   // out: ALU result to MEM stage
     reg [31:0] EX_MEM_WriteData;   // out: Write data to MEM stage
@@ -49,6 +50,7 @@ module PipelineRV32ICore_AHB #(
     reg EX_MEM_MemRead;            // out: Memory read enable to MEM stage
     reg EX_MEM_MemWrite;           // out: Memory write enable to MEM stage
     reg EX_MEM_MemToReg;           // out: Memory to register signal to MEM stage
+    reg EX_MEM_Branch;             // out: Branch signal to MEM stage
     reg [31:0] MEM_WB_PC;          // out: Program counter to WB stage
     reg [31:0] MEM_WB_ReadData;    // out: Read data to WB stage
     reg [31:0] MEM_WB_ALUResult;   // out: ALU result to WB stage
@@ -94,10 +96,13 @@ module PipelineRV32ICore_AHB #(
         .ID_EX_Rd(ID_EX_Rd),                 // out: Destination register to EX stage
         .ID_EX_Funct7(ID_EX_Funct7),         // out: Funct7 field to EX stage
         .ID_EX_Funct3(ID_EX_Funct3),         // out: Funct3 field to EX stage
+        .ID_EX_ALUOp(ID_EX_ALUOp),          //      
+        .ID_EX_ALUOp(ID_EX_ALUOp),          //       
         .ID_EX_MemRead(ID_EX_MemRead),       // out: Memory read enable to EX stage
         .ID_EX_MemWrite(ID_EX_MemWrite),     // out: Memory write enable to EX stage
         .ID_EX_RegWrite(ID_EX_RegWrite),     // out: Register write enable to EX stage
         .ID_EX_MemToReg(ID_EX_MemToReg),     // out: Memory to register signal to EX stage
+        .ID_EX_Branch(ID_EX_Branch),         // out: Branch signal to EX stage
         .ID_EX_enable_out(ID_EX_enable_out),     // out: Memory to register signal to EX stage
     );
 
@@ -117,6 +122,7 @@ module PipelineRV32ICore_AHB #(
         .ID_EX_MemWrite(ID_EX_MemWrite),     // in: Memory write enable from ID stage
         .ID_EX_RegWrite(ID_EX_RegWrite),     // in: Register write enable from ID stage
         .ID_EX_MemToReg(ID_EX_MemToReg),     // in: Memory to register signal from ID stage
+        .ID_EX_Branch(ID_EX_Branch),         // in: Branch signal from ID stage
         .ID_EX_enable_out(ID_EX_enable_out), // in: Memory to register signal to EX stage
         .EX_MEM_PC(EX_MEM_PC),               // out: Program counter to MEM stage
         .EX_MEM_ALUResult(EX_MEM_ALUResult), // out: ALU result to MEM stage
@@ -126,6 +132,7 @@ module PipelineRV32ICore_AHB #(
         .EX_MEM_MemRead(EX_MEM_MemRead),     // out: Memory read enable to MEM stage
         .EX_MEM_MemWrite(EX_MEM_MemWrite),   // out: Memory write enable to MEM stage
         .EX_MEM_MemToReg(EX_MEM_MemToReg),   // out: Memory to register signal to MEM stage
+        .EX_MEM_Branch(EX_MEM_Branch),       // out: Branch signal to MEM stage
         .EX_MEM_enable_out(EX_MEM_enable_out), //out: Enable signal from EX stage
     );
 
@@ -148,6 +155,7 @@ module PipelineRV32ICore_AHB #(
         .MEM_WB_ALUResult(MEM_WB_ALUResult), // out: ALU result to WB stage
         .MEM_WB_Rd(MEM_WB_Rd),               // out: Destination register to WB stage
         .MEM_WB_RegWrite(MEM_WB_RegWrite),   // out: Register write enable to WB stage
+        .MEM_WB_MemToReg(MEM_WB_MemToReg),   // out: Memory to register signal to WB stage
         .MEM_WB_enable_out(MEM_WB_enable_out) // out: Enable signal to WB stage
     );
 
@@ -162,6 +170,7 @@ module PipelineRV32ICore_AHB #(
         .MEM_WB_RegWrite(MEM_WB_RegWrite),   // in: Register write enable from MEM stage
         .MEM_WB_MemToReg(MEM_WB_MemToReg),   // in: Memory to register signal from MEM stage
         .MEM_WB_enable_out(MEM_WB_enable_out), // in: Enable signal from MEM stage
+        .combined_stall(combined_stall),     // in: Combined stall signal
         .WB_RegWrite(WB_RegWrite),           // out: Register write enable to register file
         .WB_WriteData(WB_WriteData),         // out: Write data to register file
         .WB_Rd(WB_Rd),                       // out: Destination register to register file

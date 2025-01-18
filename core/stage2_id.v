@@ -25,6 +25,14 @@ Recommendation:
 Given these points, it often makes sense to keep pipeline registers centralized in the core module to maintain consistency 
 and ease of understanding for the entire pipeline's flow of control signals. This approach is generally more common in pipeline designs.
 
+
+ALUOp = 2'b00;
+MemRead = 0;
+MemtoReg = 0;
+MemWrite = 0;
+ALUSrc = 1;
+RegWrite = 1;
+Branch = 0;          
 */
 
 
@@ -35,7 +43,7 @@ module ID_stage (
     input wire [31:0] IF_ID_PC,        // Input from IF/ID pipeline register, carrying Program Counter
     input wire [31:0] IF_ID_Instruction,// Input from IF/ID pipeline register, carrying instruction
     input wire IF_ID_enable_out,       // Input from fetch stage, indicating fetch enable
-    
+
     output reg [31:0] ID_EX_PC,        // Output to ID/EX pipeline register, carrying Program Counter
     output reg [31:0] ID_EX_ReadData1, // Output to ID/EX pipeline register, carrying Read Data 1
     output reg [31:0] ID_EX_ReadData2, // Output to ID/EX pipeline register, carrying Read Data 2
@@ -45,12 +53,15 @@ module ID_stage (
     output reg [4:0] ID_EX_Rd,         // Output to ID/EX pipeline register, carrying destination register
     output reg [6:0] ID_EX_Funct7,     // Output to ID/EX pipeline register, carrying funct7 field
     output reg [2:0] ID_EX_Funct3,     // Output to ID/EX pipeline register, carrying funct3 field
+
     output wire [1:0] ID_EX_ALUOp,     // Output from ControlUnit, ALU operation control signal
     output wire ID_EX_MemRead,         // Output from ControlUnit, Memory read control signal
     output wire ID_EX_MemtoReg,        // Output from ControlUnit, Memory to register control signal
     output wire ID_EX_MemWrite,        // Output from ControlUnit, Memory write control signal
     output wire ID_EX_ALUSrc,          // Output from ControlUnit, ALU source control signal
     output wire ID_EX_RegWrite,        // Output from ControlUnit, Register write control signal
+    output wire ID_EX_Branch,        // Output from ControlUnit, Register write control signal
+
     output wire [31:0] ID_EX_ReadData1_out, // Output from RegisterFile, Read Data 1
     output wire [31:0] ID_EX_ReadData2_out  // Output from RegisterFile, Read Data 2
     output reg ID_EX_enable_out,       // Output to ID/EX pipeline register, indicating enable

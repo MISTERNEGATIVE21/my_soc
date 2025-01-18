@@ -37,7 +37,8 @@ module ControlUnit (
     output reg MemtoReg,     // Memory to register control signal
     output reg MemWrite,     // Memory write control signal
     output reg ALUSrc,       // ALU source control signal
-    output reg RegWrite      // Register write control signal
+    output reg RegWrite,     // Register write control signal
+    output reg Branch        // Branch control signal
 );
 
     // Control signal logic based on opcode
@@ -50,6 +51,7 @@ module ControlUnit (
                 MemWrite = 0;
                 ALUSrc = 1;
                 RegWrite = 1;
+                Branch = 0;
             end
             7'b0010111: begin // AUIPC
                 ALUOp = 2'b00;
@@ -58,6 +60,7 @@ module ControlUnit (
                 MemWrite = 0;
                 ALUSrc = 1;
                 RegWrite = 1;
+                Branch = 0;
             end
             7'b1101111: begin // JAL
                 ALUOp = 2'b00;
@@ -66,6 +69,7 @@ module ControlUnit (
                 MemWrite = 0;
                 ALUSrc = 0;
                 RegWrite = 1;
+                Branch = 0;
             end
             7'b1100111: begin // JALR
                 ALUOp = 2'b00;
@@ -74,6 +78,7 @@ module ControlUnit (
                 MemWrite = 0;
                 ALUSrc = 1;
                 RegWrite = 1;
+                Branch = 0;
             end
             7'b1100011: begin // Branch
                 ALUOp = 2'b01;
@@ -82,6 +87,7 @@ module ControlUnit (
                 MemWrite = 0;
                 ALUSrc = 0;
                 RegWrite = 0;
+                Branch = 1;
             end
             7'b0000011: begin // Load
                 ALUOp = 2'b00;
@@ -90,6 +96,7 @@ module ControlUnit (
                 MemWrite = 0;
                 ALUSrc = 1;
                 RegWrite = 1;
+                Branch = 0;
             end
             7'b0100011: begin // Store
                 ALUOp = 2'b00;
@@ -98,22 +105,25 @@ module ControlUnit (
                 MemWrite = 1;
                 ALUSrc = 1;
                 RegWrite = 0;
+                Branch = 0;
             end
-            7'b0010011: begin // I-type (Immediate ALU Operations)
-                ALUOp = 2'b11;
+            7'b0010011: begin // Immediate
+                ALUOp = 2'b10;
                 MemRead = 0;
                 MemtoReg = 0;
                 MemWrite = 0;
                 ALUSrc = 1;
                 RegWrite = 1;
+                Branch = 0;
             end
-            7'b0110011: begin // R-type
+            7'b0110011: begin // Register
                 ALUOp = 2'b10;
                 MemRead = 0;
                 MemtoReg = 0;
                 MemWrite = 0;
                 ALUSrc = 0;
                 RegWrite = 1;
+                Branch = 0;
             end
             7'b0001111: begin // FENCE
                 ALUOp = 2'b00;
@@ -122,6 +132,7 @@ module ControlUnit (
                 MemWrite = 0;
                 ALUSrc = 0;
                 RegWrite = 0;
+                Branch = 0;
             end
             7'b1110011: begin // SYSTEM
                 ALUOp = 2'b00;
@@ -130,6 +141,7 @@ module ControlUnit (
                 MemWrite = 0;
                 ALUSrc = 0;
                 RegWrite = 0;
+                Branch = 0;
             end
             default: begin // Default case to handle undefined opcodes
                 ALUOp = 2'b00;
@@ -138,6 +150,7 @@ module ControlUnit (
                 MemWrite = 0;
                 ALUSrc = 0;
                 RegWrite = 0;
+                Branch = 0;
             end
         endcase
     end
