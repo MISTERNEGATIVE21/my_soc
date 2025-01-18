@@ -1,6 +1,6 @@
 
 
-module PipelineRV32ICore_AHB #(
+module PipelineRV32ICore_AHB_Cache #(
     parameter ICACHE_SIZE = 1024,
     parameter ICACHE_LINE_SIZE = 32,
     parameter ICACHE_WAYS = 1,
@@ -22,12 +22,7 @@ module PipelineRV32ICore_AHB #(
     output reg HWRITE,         // AHB write control output
     input [31:0] HRDATA,       // AHB read data input
     input HREADY,              // AHB ready input
-    input HRESP,               // AHB response input
-    // JTAG Interface
-    input wire TCK,            // JTAG test clock input
-    input wire TMS,            // JTAG test mode select input
-    input wire TDI,            // JTAG test data input
-    output wire TDO            // JTAG test data output   
+    input HRESP                // AHB response input
 );
 
     // Pipeline registers
@@ -42,10 +37,13 @@ module PipelineRV32ICore_AHB #(
     reg [4:0] ID_EX_Rd;
     reg [6:0] ID_EX_Funct7;
     reg [2:0] ID_EX_Funct3;
+    reg ID_EX_MemRead;         // New register to store MemRead signal
     reg [31:0] EX_MEM_ALUResult;
     reg [31:0] EX_MEM_WriteData;
     reg [4:0] EX_MEM_Rd;
     reg EX_MEM_RegWrite;
+    reg EX_MEM_MemRead;        // New register to store MemRead signal
+    reg EX_MEM_MemWrite;       // New register to store MemWrite signal
     reg MEM_WB_RegWrite;
     reg [31:0] MEM_WB_ReadData;
     reg [4:0] MEM_WB_Rd;
@@ -77,15 +75,6 @@ module PipelineRV32ICore_AHB #(
     wire [31:0] d_cache_rdata;
     wire d_cache_ready;
     wire d_cache_hit;
-
-    // Internal signals for debugging
-    wire [31:0] jtag_address;
-    wire [31:0] jtag_data_out;
-    wire [31:0] jtag_data_in;
-    wire jtag_rd_wr;
-    wire jtag_enable;
-    wire jtag_step;
-    wire jtag_run;
 
      // Internal signals for CPU control
     reg [31:0] regfile [0:31]; // Register file
@@ -136,22 +125,17 @@ module PipelineRV32ICore_AHB #(
         .HRESP(HRESP)            // Input signal
     );
 
-    // Instantiate D-Cache with configurable write policy
-    DCache #(
-        .CACHE_SIZE(DCACHE_SIZE),
-        .LINE_SIZE(DCACHE_LINE_SIZE),
-        .WAYS(DCACHE_WAYS),
-        .WRITE_POLICY(DCACHE_WRITE_POLICY)
-    ) d_cache (
-        .clk(clk),               // Input signal
-        .reset(~reset_n),        // Input signal
-        .addr(EX_MEM_ALUResult), // Input signal
-        .wdata(EX_MEM_WriteData),// Input signal
-        .r_w(MemWrite),          // Input signal
-        .valid(MemRead | MemWrite), // Input signal
-        .rdata(d_cache_rdata),   // Output signal
-        .ready(d_cache_ready),   // Output signal
-        .hit(d_cache_hit)        // Output signal
+    // Instantiate RegisterFile
+    RegisterFile rf (
+        .clk(clk),
+        .rst_n(reset_n),
+        .read_reg1(ID_EX_Rs1),
+        .read_reg2(ID_EX_Rs2),
+        .write_reg(MEM_WB_Rd),
+        .write_data(MEM_WB_ReadData),
+        .reg_write(MEM_WB_RegWrite),
+        .read_data1(ReadData1),
+        .read_data2(ReadData2)
     );
 
     //stage1----------------------------------------------------------------------------------------------------------------
@@ -167,7 +151,7 @@ module PipelineRV32ICore_AHB #(
         .combined_stall(combined_stall), // Input signal
         .IF_ID_PC(IF_ID_PC),     // Output signal
         .IF_ID_Instruction(IF_ID_Instruction), // Output signal
-        .fetch_enable_out(fetch_enable_out) // Output signal
+        .IF_ID_enable_out(fetch_enable_out) // Output signal
     );
 
     //stage2----------------------------------------------------------------------------------------------------------------
@@ -214,7 +198,7 @@ module PipelineRV32ICore_AHB #(
         .EX_MEM_WriteData(EX_MEM_WriteData), // Output signal
         .EX_MEM_Rd(EX_MEM_Rd),   // Output signal
         .EX_MEM_RegWrite(EX_MEM_RegWrite), // Output signal
-        .execute_enable_out(execute_enable_out) // Output signal
+        .EX_MEM_execute_enable_out(execute_enable_out) // Output signal
     );
 
     MEM_stage mem_stage (
@@ -238,6 +222,24 @@ module PipelineRV32ICore_AHB #(
         .mem_stall(mem_stall)    // Output signal
     );
 
+    // Instantiate D-Cache with configurable write policy
+    DCache #(
+        .CACHE_SIZE(DCACHE_SIZE),
+        .LINE_SIZE(DCACHE_LINE_SIZE),
+        .WAYS(DCACHE_WAYS),
+        .WRITE_POLICY(DCACHE_WRITE_POLICY)
+    ) d_cache (
+        .clk(clk),               // Input signal
+        .reset(~reset_n),        // Input signal
+        .addr(EX_MEM_ALUResult), // Input signal
+        .wdata(EX_MEM_WriteData),// Input signal
+        .r_w(MemWrite),          // Input signal
+        .valid(MemRead | MemWrite), // Input signal
+        .rdata(d_cache_rdata),   // Output signal
+        .ready(d_cache_ready),   // Output signal
+        .hit(d_cache_hit)        // Output signal
+    );
+
     WB_stage wb_stage (
         .clk(clk),               // Input signal
         .reset(~reset_n),        // Input signal
@@ -251,14 +253,6 @@ module PipelineRV32ICore_AHB #(
         .regfile(regfile)        // Output signal
     );
 
-    // ALU Control Unit
-    ALUControlUnit alu_cu (
-        .ALUOp(ALUOp),           // Input signal
-        .Funct7(ID_EX_Funct7),   // Input signal
-        .Funct3(ID_EX_Funct3),   // Input signal
-        .ALUControl(ALUControl)  // Output signal
-    );
-
     // Hazard Detection Unit
     HazardDetectionUnit hdu (
         .ID_EX_Rs1(ID_EX_Rs1),   // Input signal
@@ -268,35 +262,6 @@ module PipelineRV32ICore_AHB #(
         .MEM_WB_Rd(MEM_WB_Rd),   // Output signal
         .MEM_WB_RegWrite(MEM_WB_RegWrite), // Output signal
         .hazard_stall(hazard_stall) // Output signal
-    );   
-
-    // Instantiate JTAG Interface
-    JTAG_Interface jtag (
-        .TCK(TCK),               // Input signal
-        .TMS(TMS),               // Input signal
-        .TDI(TDI),               // Input signal
-        .TDO(TDO),               // Output signal
-        .address(jtag_address),  // Output signal
-        .data_out(jtag_data_out),// Output signal
-        .data_in(jtag_data_in),  // Input signal
-        .rd_wr(jtag_rd_wr),      // Output signal
-        .enable(jtag_enable),    // Output signal
-        .step(jtag_step),        // Output signal
-        .run(jtag_run)           // Output signal
-    );
-
-    // Instantiate CPU Debug Logic
-    CPU_Debug debug (
-        .clk(clk),               // Input signal
-        .reset(~reset_n),        // Input signal
-        .enable(jtag_enable),    // Input signal
-        .rd_wr(jtag_rd_wr),      // Input signal
-        .address(jtag_address),  // Input signal
-        .data_out(jtag_data_out),// Output signal
-        .data_in(jtag_data_in),  // Input signal
-        .step(jtag_step),        // Input signal
-        .run(jtag_run),          // Input signal
-        .halt(debug_stall)       // Output signal
     );
 
     // Instantiate the cpu_counter module

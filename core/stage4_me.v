@@ -1,125 +1,84 @@
-/*
-Explanation
-
-Inputs:
-d_cache_rdata: Data read from the D-Cache.
-d_cache_ready: Signal indicating the D-Cache is ready.
-d_cache_hit: Signal indicating a cache hit.
-Other inputs include clk, reset, EX_MEM_enable_out, EX_MEM_ALUResult, EX_MEM_WriteData, EX_MEM_Rd, EX_MEM_RegWrite, MemRead, MemWrite, and combined_stall.
-
-Outputs:
-MEM_WB_ReadData: Data to be written back.
-MEM_WB_Rd: Destination register for write-back.
-MEM_WB_RegWrite: Signal for register write-back.
-MEM_WB_enable_out: Signal to enable the memory stage for the next stage.
-
-Stall Signal: 
-A new output signal mem_stall is introduced to indicate when the pipeline should be stalled.
-
-Reset Condition: 
-On reset, all signals, including mem_stall, are cleared.
-
-Combined Stall Condition: 
-If combined_stall is asserted, a NOP is inserted into the pipeline, and mem_stall is set to 1 to stall the pipeline.
-
-Memory Read Operation:
-If MemRead is true and the D-Cache signals a hit, MEM_WB_ReadData is set to d_cache_rdata, MEM_WB_enable_out is set to 1, and mem_stall is set to 0.
-If MemRead is true and the D-Cache signals a miss but is ready, MEM_WB_enable_out is set to 0, and mem_stall is set to 1 to stall the pipeline.
-If MemRead is true and the D-Cache is not ready, MEM_WB_enable_out is set to 0, and mem_stall is set to 1 to stall the pipeline.
-
-Memory Write Operation:
-If MemWrite is true and the D-Cache signals a hit, the write is handled by the D-Cache, MEM_WB_enable_out is set to 1, and mem_stall is set to 0.
-If MemWrite is true and the D-Cache signals a miss but is ready, MEM_WB_enable_out is set to 0, and mem_stall is set to 1 to stall the pipeline.
-If MemWrite is true and the D-Cache is not ready, MEM_WB_enable_out is set to 0, and mem_stall is set to 1 to stall the pipeline.
-
-No Memory Operation:
-If both MemRead and MemWrite are false, then MEM_WB_enable_out is set to 1 to allow the instruction to progress to the Write-Back (WB) stage without being blocked, and mem_stall is set to 0.
-
-Pass-through Register Write Signals:
-The MEM_WB_Rd and MEM_WB_RegWrite signals are updated only if mem_stall is not asserted. This ensures that these signals are correctly passed through to the WB stage only when the memory stage is not stalled.
-
-*/
-
 module MEM_stage (
-    input wire clk,
-    input wire reset_n,
-    input wire EX_MEM_enable_out, // Updated input from execute stage
-    input wire [31:0] EX_MEM_ALUResult,
-    input wire [31:0] EX_MEM_WriteData,
-    input wire [4:0] EX_MEM_Rd,
-    input wire EX_MEM_RegWrite,
-    input wire MemRead,
-    input wire MemWrite,
-    input wire d_cache_ready,
-    input wire d_cache_hit,
-    input wire [31:0] d_cache_rdata,   
-    input wire combined_stall,
-    output reg [31:0] MEM_WB_ReadData,
-    output reg [4:0] MEM_WB_Rd,
-    output reg MEM_WB_RegWrite,
-    output reg MEM_WB_enable_out,
-    output reg mem_stall // Updated output to signal pipeline stall
+    input wire clk,               // 时钟信号
+    input wire reset_n,           // 异步复位信号（低电平有效）
+    input wire combined_stall,    // 组合暂停信号
+    input wire EX_MEM_enable_out, // 来自执行阶段的使能信号
+    input wire [31:0] EX_MEM_PC,  // 来自执行阶段的程序计数器
+    input wire [31:0] EX_MEM_ALUResult, // 来自执行阶段的ALU结果（用于内存操作的地址或寄存器写入内容）
+    input wire [31:0] EX_MEM_WriteData, // 来自执行阶段的写数据
+    input wire [4:0] EX_MEM_Rd,   // 来自执行阶段的目标寄存器
+    input wire EX_MEM_RegWrite,   // 来自执行阶段的寄存器写使能信号
+    input wire EX_MEM_MemRead,    // 来自执行阶段的内存读使能信号
+    input wire EX_MEM_MemWrite,   // 来自执行阶段的内存写使能信号
+    input wire EX_MEM_MemToReg
+
+    output reg [31:0] MEM_WB_PC,  // 传递到写回阶段的程序计数器
+    output reg [31:0] MEM_WB_ReadData, // 传递到寄存器文件的写回数据
+    output reg [31:0] MEM_WB_ALUResult, // 传递到下一个阶段的ALU结果
+    output reg [4:0] MEM_WB_Rd,        // 传递到写回阶段的目标寄存器
+    output reg MEM_WB_RegWrite,        // 传递到写回阶段的寄存器写使能信号
+    output wire MEM_WB_MemToReg
+    output reg MEM_WB_enable_out       // 内存阶段的使能信号
 );
+
+    // 实例化 d_memory
+    wire [31:0] d_memory_rdata;
+    reg d_memory_mem_read;
+    reg d_memory_mem_write;
+    d_memory #(
+        .ADDR_WIDTH(32),
+        .DATA_WIDTH(32),
+        .MEM_DEPTH(1024)
+    ) d_memory_inst (
+        .clk(clk),
+        .reset_n(reset_n),
+        .addr(EX_MEM_ALUResult),
+        .wdata(EX_MEM_WriteData),
+        .mem_read(d_memory_mem_read),
+        .mem_write(d_memory_mem_write),
+        .rdata(d_memory_rdata)
+    );
 
     always @(posedge clk or negedge reset_n) begin
         if (~reset_n) begin
+            // 复位逻辑
+            MEM_WB_PC <= 32'b0;
             MEM_WB_ReadData <= 32'b0;
+            MEM_WB_ALUResult <= 32'b0;
             MEM_WB_Rd <= 5'b0;
             MEM_WB_RegWrite <= 1'b0;
+            MEM_WB_MemToReg <= 1'b0;
             MEM_WB_enable_out <= 1'b0;
-            mem_stall <= 1'b0; // Clear stall signal on reset
+            d_memory_mem_read <= 1'b0;
+            d_memory_mem_write <= 1'b0;
         end else if (combined_stall) begin
-            // Insert bubble (NOP) into the pipeline
+            // 在流水线中插入空泡（NOP）
+            MEM_WB_PC <= 32'b0;
             MEM_WB_ReadData <= 32'b0;
+            MEM_WB_ALUResult <= 32'b0;
             MEM_WB_Rd <= 5'b0;
             MEM_WB_RegWrite <= 1'b0;
+            MEM_WB_MemToReg <= 1'b0;
             MEM_WB_enable_out <= 1'b0;
-            mem_stall <= 1'b1; // Stall pipeline on combined stall
+            d_memory_mem_read <= 1'b0;
+            d_memory_mem_write <= 1'b0;
         end else if (EX_MEM_enable_out) begin
-            if (MemRead) begin
-                if (d_cache_ready && d_cache_hit) begin
-                    // Cache hit: read data from D-Cache
-                    MEM_WB_ReadData <= d_cache_rdata;
-                    MEM_WB_enable_out <= 1'b1; // Data is ready
-                    mem_stall <= 1'b0; // No need to stall
-                end else if (d_cache_ready && !d_cache_hit) begin
-                    // Cache miss: wait for D-Cache to handle the miss
-                    MEM_WB_enable_out <= 1'b0; // Wait for D-Cache
-                    mem_stall <= 1'b1; // Stall pipeline
-                end else begin
-                    // D-Cache not ready
-                    MEM_WB_enable_out <= 1'b0; // Wait for D-Cache
-                    mem_stall <= 1'b1; // Stall pipeline
-                end
-            end else if (MemWrite) begin
-                if (d_cache_ready && d_cache_hit) begin
-                    // Cache write handled in D-Cache
-                    MEM_WB_enable_out <= 1'b1; // Write complete
-                    mem_stall <= 1'b0; // No need to stall
-                end else if (d_cache_ready && !d_cache_hit) begin
-                    // Cache miss: wait for D-Cache to handle the miss
-                    MEM_WB_enable_out <= 1'b0; // Wait for D-Cache
-                    mem_stall <= 1'b1; // Stall pipeline
-                end else begin
-                    // D-Cache not ready
-                    MEM_WB_enable_out <= 1'b0; // Wait for D-Cache
-                    mem_stall <= 1'b1; // Stall pipeline
-                end
-            end else begin
-                // No memory operation
-                MEM_WB_enable_out <= 1'b1; // Allow progression to WB stage
-                mem_stall <= 1'b0; // No need to stall
-            end
-
-            // Pass-through register write signals only if not stalled
-            if (!mem_stall) begin
-                MEM_WB_Rd <= EX_MEM_Rd;
-                MEM_WB_RegWrite <= EX_MEM_RegWrite;
-            end
-			
+            // EX_MEM_enable_out = 1 流水线有效 内存操作
+            d_memory_mem_read <= EX_MEM_MemRead;
+            d_memory_mem_write <= EX_MEM_MemWrite;
+            MEM_WB_ReadData <= EX_MEM_MemRead ? d_memory_rdata : 32'b0;
+            MEM_WB_ALUResult <= EX_MEM_ALUResult;
+            MEM_WB_PC <= EX_MEM_PC;
+            MEM_WB_Rd <= EX_MEM_Rd;
+            MEM_WB_RegWrite <= EX_MEM_RegWrite;
+            MEM_WB_MemToReg <= EX_MEM_MemToReg;
+            MEM_WB_enable_out <= 1'b1;
         end else begin
-            MEM_WB_enable_out <= 1'b0; // Disable next stage advance
-            mem_stall <= 1'b0; // Clear stall signal
+            // EX_MEM_enable_out = 0； 禁用下一个阶段的进展
+            MEM_WB_enable_out <= 1'b0;
+            d_memory_mem_read <= 1'b0;
+            d_memory_mem_write <= 1'b0;
         end
     end
+
 endmodule
