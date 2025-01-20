@@ -100,18 +100,44 @@ module my_soc (
     assign HRESP_CPU = HRESP;
     assign HRESP_DMA = HRESP;
 
-    // Instantiate RV32I core with AHB master interface and I-Cache
-    PipelineRV32ICore_AHB #(
-        .ICACHE_SIZE(1024),
-        .ICACHE_LINE_SIZE(32),
-        .ICACHE_WAYS(1),
-        .DCACHE_SIZE(1024),
-        .DCACHE_LINE_SIZE(32),
-        .DCACHE_WAYS(1),
-        .DCACHE_WRITE_POLICY("WRITE_BACK")
-    ) rv32i_core (
+    // // Instantiate RV32I core with AHB master interface and I-Cache
+    // PipelineRV32ICore_AHB #(
+    //     .ICACHE_SIZE(1024),
+    //     .ICACHE_LINE_SIZE(32),
+    //     .ICACHE_WAYS(1),
+    //     .DCACHE_SIZE(1024),
+    //     .DCACHE_LINE_SIZE(32),
+    //     .DCACHE_WAYS(1),
+    //     .DCACHE_WRITE_POLICY("WRITE_BACK")
+    // ) rv32i_core (
+    //     .clk(clk),
+    //     .reset_n(reset_n),
+    //     .HADDR(HADDR_CPU),
+    //     .HBURST(HBURST_CPU),
+    //     .HMASTLOCK(HMASTLOCK_CPU),
+    //     .HPROT(HPROT_CPU),
+    //     .HSIZE(HSIZE_CPU),
+    //     .HTRANS(HTRANS_CPU),
+    //     .HWDATA(HWDATA_CPU),
+    //     .HWRITE(HWRITE_CPU),
+    //     .HRDATA(HRDATA),
+    //     .HREADY(HREADY),
+    //     .HRESP(HRESP),
+    //     // JTAG Interface
+    //     .TCK(TCK),
+    //     .TMS(TMS),
+    //     .TDI(TDI),
+    //     .TDO(TDO)
+    // );
+
+
+    // rv32i_core withtou cache
+    RV32ICore_AHB rv32i_core (
+        //system signals
         .clk(clk),
         .reset_n(reset_n),
+        
+        //ahb master interface
         .HADDR(HADDR_CPU),
         .HBURST(HBURST_CPU),
         .HMASTLOCK(HMASTLOCK_CPU),
@@ -120,14 +146,9 @@ module my_soc (
         .HTRANS(HTRANS_CPU),
         .HWDATA(HWDATA_CPU),
         .HWRITE(HWRITE_CPU),
-        .HRDATA(HRDATA),
-        .HREADY(HREADY),
-        .HRESP(HRESP),
-        // JTAG Interface
-        .TCK(TCK),
-        .TMS(TMS),
-        .TDI(TDI),
-        .TDO(TDO)
+        .HRDATA(HRDATA_CPU),
+        .HREADY(HREADY_CPU),
+        .HRESP(HRESP_CPU),
     );
 
     // Instantiate ROM as AHB slave

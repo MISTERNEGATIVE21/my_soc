@@ -2,18 +2,24 @@
  fetch inst from i_memory
 */
 module IF_stage (
+    //system signals
     input wire clk,               // Clock signal
     input wire reset_n,           // Asynchronous reset (active low)
+    
+    //golobal stall signal
     input wire combined_stall,    // Combined stall signal
+    
+    //enable signals from previous stage
     input wire fetch_enable,      // Fetch enable signal for hazard control
     input wire [31:0] next_pc,    // Next program counter value
     
+    //output to next stage
     output reg [31:0] IF_ID_PC,   // Program counter to ID stage
     output reg [31:0] IF_ID_Instruction, // Instruction to ID stage
     output reg IF_ID_enable_out   // Enable signal for the next stage
 );
 
-    reg [31:0] pc; // Program counter register
+    reg [31:0] pc; // Program counter register, internal signal;
 
     // Instantiate i_memory
     wire [31:0] i_memory_rdata;

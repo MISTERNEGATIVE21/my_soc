@@ -1,5 +1,3 @@
-
-
 module PipelineRV32ICore_AHB #(
     parameter ICACHE_SIZE = 1024,
     parameter ICACHE_LINE_SIZE = 32,
@@ -206,6 +204,6 @@ module PipelineRV32ICore_AHB #(
 
     // Next PC logic
     wire [31:0] next_pc;                     // out: Next program counter value
-    assign next_pc = WB_PC /* logic to determine the next PC value */;
+    assign next_pc = EX_MEM_PC                  /* logic to determine the next PC value */;
 
 endmodule
