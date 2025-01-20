@@ -174,7 +174,7 @@ module PipelineRV32ICore_AHB_Cache #(
         .ID_EX_enable_out(decode_enable_out), // Output signal
         .ID_EX_ALUOp(ALUOp),             // Output signal
         .ID_EX_MemRead(ID_EX_MemRead),   // Output signal
-        .ID_EX_MemtoReg(MemtoReg),       // Output signal
+        .ID_EX_MemToReg(MemtoReg),       // Output signal
         .ID_EX_MemWrite(MemWrite),       // Output signal
         .ID_EX_ALUSrc(ALUSrc),           // Output signal
         .ID_EX_RegWrite(RegWrite),       // Output signal

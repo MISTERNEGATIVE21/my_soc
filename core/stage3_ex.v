@@ -40,9 +40,10 @@ module EX_stage (
     input wire ID_EX_ALUSrc,             // Output from ControlUnit, ALU source control signal
     input wire [1:0] ID_EX_ALUOp,        // Input from ControlUnit, ALU operation control signal
     input wire ID_EX_Branch,             // Output from ControlUnit, Branch control signal
+    input wire ID_EX_jump,               // Output from ControlUnit, Jump control signal
     input wire ID_EX_MemRead,            // Output from ControlUnit, Memory read control signal
     input wire ID_EX_MemWrite,           // Output from ControlUnit, Memory write control signal
-    input wire ID_EX_MemtoReg,           // Output from ControlUnit, Memory to register control signal
+    input wire ID_EX_MemToReg,           // Output from ControlUnit, Memory to register control signal
     input wire ID_EX_RegWrite,           // Output from ControlUnit, Register write control signal
 
     //output
@@ -56,7 +57,10 @@ module EX_stage (
     output reg EX_MEM_RegWrite,          // Output to EX/MEM pipeline register, Register write control signal
 
     //enable signal to next stage
-    output reg EX_MEM_enable_out         // Output to EX/MEM pipeline register, indicating enable
+    output reg EX_MEM_enable_out,        // Output to EX/MEM pipeline register, indicating enable
+
+    //control signals to clear IF/ID stage
+    output reg EX_clear_IF_ID               // Signal to clear IF/ID stage
 );
 
     wire [3:0] ALUControl;        // ALU control signal
@@ -64,7 +68,7 @@ module EX_stage (
     wire Zero;                    // Zero flag from ALU
     wire [31:0] ALUInput2;        // ALU second input
 
-    // Instantiate ALU control unit
+    // ALU control unit
     ALUControlUnit alu_control (
         .clk(clk),
         .reset_n(reset_n),
@@ -77,7 +81,7 @@ module EX_stage (
     // Select ALU second input based on ALUSrc signal
     assign ALUInput2 = ID_EX_ALUSrc ? ID_EX_Immediate : ID_EX_ReadData2;
 
-    // Instantiate ALU
+    // ALU
     ALU alu (
         .clk(clk),
         .reset_n(reset_n),
@@ -100,25 +104,24 @@ module EX_stage (
             EX_MEM_MemWrite <= 1'b0;
             EX_MEM_MemToReg <= 1'b0;
             EX_MEM_enable_out <= 1'b0;
+            EX_clear_IF_ID <= 1'b0;
         end else if (combined_stall) begin
             // Insert bubble (NOP) into the pipeline
-            EX_MEM_PC <= 32'b0;
-            EX_MEM_ALUResult <= 32'b0;
-            EX_MEM_WriteData <= 32'b0;
-            EX_MEM_Rd <= 5'b0;
-            EX_MEM_RegWrite <= 1'b0;
-            EX_MEM_MemRead <= 1'b0;
-            EX_MEM_MemWrite <= 1'b0;
-            EX_MEM_MemToReg <= 1'b0;
             EX_MEM_enable_out <= 1'b0;
         end else if (ID_EX_enable_out) begin
             // ID_EX_enable_out = 1, pipeline active
-            if (ID_EX_Branch && Zero) begin
+            if (ID_EX_jump) begin
+                // Jump taken
+                EX_MEM_PC <= ID_EX_PC + (ID_EX_Immediate << 1);
+                EX_clear_IF_ID <= 1'b1; // Clear IF/ID stage
+            end else if (ID_EX_Branch && Zero) begin
                 // Branch taken
                 EX_MEM_PC <= ID_EX_PC + (ID_EX_Immediate << 1);
+                EX_clear_IF_ID <= 1'b1; // Clear IF/ID stage
             end else begin
                 // Normal operation
-                EX_MEM_PC <= ID_EX_PC + 4;
+                EX_MEM_PC <= ID_EX_PC;
+                EX_clear_IF_ID <= 1'b0; // Do not clear IF/ID stage
             end
             EX_MEM_ALUResult <= ALUResult;
             EX_MEM_WriteData <= ID_EX_ReadData2;
@@ -130,6 +133,7 @@ module EX_stage (
             EX_MEM_enable_out <= 1'b1; // Enable next stage
         end else begin
             EX_MEM_enable_out <= 1'b0; // Disable next stage
+            EX_clear_IF_ID <= 1'b0; // Do not clear IF/ID stage
         end
     end
 

@@ -49,6 +49,7 @@ module PipelineRV32ICore_AHB #(
     reg EX_MEM_MemWrite;           // out: Memory write enable to MEM stage
     reg EX_MEM_MemToReg;           // out: Memory to register signal to MEM stage
     reg EX_MEM_Branch;             // out: Branch signal to MEM stage
+    reg EX_clear_IF_ID;            // out: Branch signal to MEM stage 
     reg [31:0] MEM_WB_PC;          // out: Program counter to WB stage
     reg [31:0] MEM_WB_ReadData;    // out: Read data to WB stage
     reg [31:0] MEM_WB_ALUResult;   // out: ALU result to WB stage
@@ -58,12 +59,21 @@ module PipelineRV32ICore_AHB #(
 
     // Control signals
     wire fetch_enable;             // out: Fetch enable signal from hazard control
+    reg IF_ID_enable_out;          // out: Enable signal to next stage
+    reg ID_EX_enable_out;          // out: Enable signal to next stage
+    reg EX_MEM_enable_out;         // out: Enable signal to next stage
+    reg MEM_WB_enable_out;         // out: Enable signal to next stage
+    
     wire combined_stall;           // out: Combined stall signal
     wire hazard_detected;          // out: Hazard detection signal
 
     // Decode rs1 and rs2 from IF_ID_Instruction
     wire [4:0] rs1 = IF_ID_Instruction[19:15]; // out: Source register 1
     wire [4:0] rs2 = IF_ID_Instruction[24:20]; // out: Source register 2
+
+    // enalbe signal to next stage
+
+
 
     // IF stage
     IF_stage if_stage (
@@ -72,6 +82,7 @@ module PipelineRV32ICore_AHB #(
         .next_pc(next_pc),                   // in: Next program counter value
         .fetch_enable(fetch_enable),         // in: Fetch enable signal from hazard control
         .combined_stall(combined_stall),     // in: Combined stall signal
+        .EX_clear_IF_ID(EX_clear_IF_ID)         // in: clear signal to if stage   
         .IF_ID_PC(IF_ID_PC),                 // out: Program counter to ID stage
         .IF_ID_Instruction(IF_ID_Instruction), // out: Instruction to ID stage
         .IF_ID_enable_out(IF_ID_enable_out)  // out: Enable signal to next stage
@@ -82,6 +93,7 @@ module PipelineRV32ICore_AHB #(
         .clk(clk),                           // in: Clock signal
         .reset_n(reset_n),                   // in: Asynchronous reset (active low)
         .combined_stall(combined_stall),     // in: Combined stall signal
+        .EX_clear_IF_ID(EX_clear_IF_ID) // in: clear signal to id stage   
         .IF_ID_PC(IF_ID_PC),                 // in: Program counter from IF stage
         .IF_ID_Instruction(IF_ID_Instruction), // in: Instruction from IF stage
         .IF_ID_enable_out(IF_ID_enable_out), // in: Enable signal from IF stage
@@ -122,7 +134,7 @@ module PipelineRV32ICore_AHB #(
         .ID_EX_Branch(ID_EX_Branch),         // in: Branch signal from ID stage
         .ID_EX_MemRead(ID_EX_MemRead),       // in: Memory read enable from ID stage
         .ID_EX_MemWrite(ID_EX_MemWrite),     // in: Memory write enable from ID stage
-        .ID_EX_MemtoReg(ID_EX_MemtoReg),     // in: Memory to register signal from ID stage
+        .ID_EX_MemToReg(ID_EX_MemToReg),     // in: Memory to register signal from ID stage
         .ID_EX_RegWrite(ID_EX_RegWrite),     // in: Register write enable from ID stage
         .EX_MEM_PC(EX_MEM_PC),               // out: Program counter to MEM stage
         .EX_MEM_ALUResult(EX_MEM_ALUResult), // out: ALU result to MEM stage
@@ -133,6 +145,7 @@ module PipelineRV32ICore_AHB #(
         .EX_MEM_MemToReg(EX_MEM_MemToReg),   // out: Memory to register control signal to MEM stage
         .EX_MEM_RegWrite(EX_MEM_RegWrite),   // out: Register write control signal to MEM stage
         .EX_MEM_enable_out(EX_MEM_enable_out) // out: Enable signal to MEM stage
+        .EX_clear_IF_ID(EX_clear_IF_ID) // out: Enable signal to MEM stage       
     );
 
     // MEM stage

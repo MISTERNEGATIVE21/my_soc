@@ -35,7 +35,6 @@ RegWrite = 1;
 Branch = 0;          
 */
 
-
 module ID_stage (
     //input -----------------------------------------------------------------
     //system signals
@@ -44,6 +43,7 @@ module ID_stage (
 
     //golobal stall signal
     input wire combined_stall,         // Combined stall signal
+    input wire EX_clear_IF_ID,            // banch or jump occour , clear if/id stage
 
     //from previous stage
     input wire [31:0] IF_ID_PC,        // Input from IF/ID pipeline register, carrying Program Counter
@@ -67,10 +67,11 @@ module ID_stage (
     //form control unit
     output wire ID_EX_ALUSrc,          // Output from ControlUnit, ALU source control signal
     output wire [1:0] ID_EX_ALUOp,     // Output from ControlUnit, ALU operation control signal
-    output wire ID_EX_Branch,        // Output from ControlUnit, Register write control signal
+    output wire ID_EX_Branch,           // Output from ControlUnit, branch control signal
+    output wire ID_EX_Jump,             // Output from ControlUnit, jump control signal 
     output wire ID_EX_MemRead,         // Output from ControlUnit, Memory read control signal
     output wire ID_EX_MemWrite,        // Output from ControlUnit, Memory write control signal
-    output wire ID_EX_MemtoReg,        // Output from ControlUnit, Memory to register control signal
+    output wire ID_EX_MemToReg,        // Output from ControlUnit, Memory to register control signal
     output wire ID_EX_RegWrite,        // Output from ControlUnit, Register write control signal
 
     //enable signal to next stage
@@ -92,9 +93,10 @@ module ID_stage (
         .ALUSrc(ID_EX_ALUSrc),           // Output signal
         .ALUOp(ID_EX_ALUOp),             // Output signal
         .Branch(ID_EX_Branch)            // Output signal
+        .Branch(ID_EX_Jump)            // Output signal       
         .MemRead(ID_EX_MemRead),         // Output signal
         .MemWrite(ID_EX_MemWrite),       // Output signal
-        .MemtoReg(ID_EX_MemtoReg),       // Output signal
+        .MemtoReg(ID_EX_MemToReg),       // Output signal
         .RegWrite(ID_EX_RegWrite)        // Output signal
     );
 
@@ -113,6 +115,9 @@ module ID_stage (
             ID_EX_enable_out <= 1'b0;
         end else if (combined_stall) begin
             // Insert bubble (NOP) into the pipeline
+            ID_EX_enable_out <= 1'b0;
+        end else if (EX_clear_IF_ID) begin
+            // clear if-id stage
             ID_EX_PC <= 32'b0;
             ID_EX_ReadData1 <= 32'b0;
             ID_EX_ReadData2 <= 32'b0;

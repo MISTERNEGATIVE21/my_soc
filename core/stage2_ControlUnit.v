@@ -34,11 +34,12 @@ module ControlUnit (
     input [6:0] opcode,      // Opcode input
     output reg ALUSrc,       // ALU source control signal, to ex-stage, alu
     output reg [1:0] ALUOp,  // ALU operation control signal, to ex-stage, alu
-    output reg Branch        // Branch control signal, to ex-stage, branch
+    output reg Branch,       // Branch control signal, to ex-stage, branch
+    output reg Jump,         // Jump control signal, to ex-stage, branch
     output reg MemRead,      // Memory read control signal, to mem-stage, read  
     output reg MemWrite,     // Memory write control signal, to mem-stage, write
-    output reg MemtoReg,     // Memory to register control signal, to wb-stage, write-srource select
-    output reg RegWrite,     // Register write control signal, to wb-stage, write-enable
+    output reg MemtoReg,     // Memory to register control signal, to wb-stage, write-source select
+    output reg RegWrite      // Register write control signal, to wb-stage, write-enable
 );
 
     // Control signal logic based on opcode
@@ -52,6 +53,7 @@ module ControlUnit (
                 ALUSrc = 1;
                 RegWrite = 1;
                 Branch = 0;
+                Jump = 0;
             end
             7'b0010111: begin // AUIPC
                 ALUOp = 2'b00;
@@ -61,15 +63,17 @@ module ControlUnit (
                 ALUSrc = 1;
                 RegWrite = 1;
                 Branch = 0;
+                Jump = 0;
             end
             7'b1101111: begin // JAL
                 ALUOp = 2'b00;
                 MemRead = 0;
                 MemtoReg = 0;
                 MemWrite = 0;
-                ALUSrc = 0;
+                ALUSrc = 1; // 设置 ALUSrc 为 1
                 RegWrite = 1;
                 Branch = 0;
+                Jump = 1;
             end
             7'b1100111: begin // JALR
                 ALUOp = 2'b00;
@@ -79,6 +83,7 @@ module ControlUnit (
                 ALUSrc = 1;
                 RegWrite = 1;
                 Branch = 0;
+                Jump = 1;
             end
             7'b1100011: begin // Branch
                 ALUOp = 2'b01;
@@ -88,6 +93,7 @@ module ControlUnit (
                 ALUSrc = 0;
                 RegWrite = 0;
                 Branch = 1;
+                Jump = 0;
             end
             7'b0000011: begin // Load
                 ALUOp = 2'b00;
@@ -97,6 +103,7 @@ module ControlUnit (
                 ALUSrc = 1;
                 RegWrite = 1;
                 Branch = 0;
+                Jump = 0;
             end
             7'b0100011: begin // Store
                 ALUOp = 2'b00;
@@ -106,6 +113,7 @@ module ControlUnit (
                 ALUSrc = 1;
                 RegWrite = 0;
                 Branch = 0;
+                Jump = 0;
             end
             7'b0010011: begin // Immediate
                 ALUOp = 2'b10;
@@ -115,6 +123,7 @@ module ControlUnit (
                 ALUSrc = 1;
                 RegWrite = 1;
                 Branch = 0;
+                Jump = 0;
             end
             7'b0110011: begin // Register
                 ALUOp = 2'b10;
@@ -124,6 +133,7 @@ module ControlUnit (
                 ALUSrc = 0;
                 RegWrite = 1;
                 Branch = 0;
+                Jump = 0;
             end
             7'b0001111: begin // FENCE
                 ALUOp = 2'b00;
@@ -133,6 +143,7 @@ module ControlUnit (
                 ALUSrc = 0;
                 RegWrite = 0;
                 Branch = 0;
+                Jump = 0;
             end
             7'b1110011: begin // SYSTEM
                 ALUOp = 2'b00;
@@ -142,6 +153,7 @@ module ControlUnit (
                 ALUSrc = 0;
                 RegWrite = 0;
                 Branch = 0;
+                Jump = 0;
             end
             default: begin // Default case to handle undefined opcodes
                 ALUOp = 2'b00;
@@ -151,6 +163,7 @@ module ControlUnit (
                 ALUSrc = 0;
                 RegWrite = 0;
                 Branch = 0;
+                Jump = 0;
             end
         endcase
     end
