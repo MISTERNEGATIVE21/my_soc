@@ -160,32 +160,11 @@ module PipelineRV32ICore_AHB #(
         .MEM_WB_enable_out(MEM_WB_enable_out) // out: Enable signal to WB stage
     );
 
-    // MEM stage
-    MEM_stage mem_stage (
-        .clk(clk),                           // in: Clock signal
-        .reset_n(reset_n),                   // in: Asynchronous reset (active low)
-        .EX_MEM_enable_out(EX_MEM_enable_out), // in: Enable signal from EX stage
-        .EX_MEM_PC(EX_MEM_PC),               // in: Program counter from EX stage
-        .EX_MEM_ALUResult(EX_MEM_ALUResult), // in: ALU result from EX stage
-        .EX_MEM_WriteData(EX_MEM_WriteData), // in: Write data from EX stage
-        .EX_MEM_Rd(EX_MEM_Rd),               // in: Destination register from EX stage
-        .EX_MEM_RegWrite(EX_MEM_RegWrite),   // in: Register write enable from EX stage
-        .EX_MEM_MemRead(EX_MEM_MemRead),     // in: Memory read enable from EX stage
-        .EX_MEM_MemWrite(EX_MEM_MemWrite),   // in: Memory write enable from EX stage
-        .EX_MEM_MemToReg(EX_MEM_MemToReg),   // in: Memory to register signal from EX stage
-        .MEM_WB_PC(MEM_WB_PC),               // out: Program counter to WB stage
-        .MEM_WB_ReadData(MEM_WB_ReadData),   // out: Read data to WB stage
-        .MEM_WB_ALUResult(MEM_WB_ALUResult), // out: ALU result to WB stage
-        .MEM_WB_Rd(MEM_WB_Rd),               // out: Destination register to WB stage
-        .MEM_WB_RegWrite(MEM_WB_RegWrite),   // out: Register write enable to WB stage
-        .MEM_WB_MemToReg(MEM_WB_MemToReg),   // out: Memory to register signal to WB stage
-        .MEM_WB_enable_out(MEM_WB_enable_out) // out: Enable signal to WB stage
-    );
-
     // WB stage
     WB_stage wb_stage (
         .clk(clk),                           // in: Clock signal
         .reset_n(reset_n),                   // in: Asynchronous reset (active low)
+        .combined_stall(combined_stall),     // in: Combined stall signal
         .MEM_WB_PC(MEM_WB_PC),               // in: Program counter from MEM stage
         .MEM_WB_ReadData(MEM_WB_ReadData),   // in: Read data from MEM stage
         .MEM_WB_ALUResult(MEM_WB_ALUResult), // in: ALU result from MEM stage
@@ -193,7 +172,6 @@ module PipelineRV32ICore_AHB #(
         .MEM_WB_RegWrite(MEM_WB_RegWrite),   // in: Register write enable from MEM stage
         .MEM_WB_MemToReg(MEM_WB_MemToReg),   // in: Memory to register signal from MEM stage
         .MEM_WB_enable_out(MEM_WB_enable_out), // in: Enable signal from MEM stage
-        .combined_stall(combined_stall),     // in: Combined stall signal
         .WB_RegWrite(WB_RegWrite),           // out: Register write enable to register file
         .WB_WriteData(WB_WriteData),         // out: Write data to register file
         .WB_Rd(WB_Rd),                       // out: Destination register to register file
@@ -228,6 +206,6 @@ module PipelineRV32ICore_AHB #(
 
     // Next PC logic
     wire [31:0] next_pc;                     // out: Next program counter value
-    assign next_pc = EX_MEM_PC /* logic to determine the next PC value */;
+    assign next_pc = WB_PC /* logic to determine the next PC value */;
 
 endmodule

@@ -118,7 +118,7 @@ module EX_stage (
                 EX_MEM_PC <= ID_EX_PC + (ID_EX_Immediate << 1);
             end else begin
                 // Normal operation
-                EX_MEM_PC <= ID_EX_PC;
+                EX_MEM_PC <= ID_EX_PC + 4;
             end
             EX_MEM_ALUResult <= ALUResult;
             EX_MEM_WriteData <= ID_EX_ReadData2;
