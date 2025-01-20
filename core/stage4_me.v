@@ -1,23 +1,33 @@
 module MEM_stage (
+    //system signals
     input wire clk,               // 时钟信号
     input wire reset_n,           // 异步复位信号（低电平有效）
+    
+    //golobal stall signal
     input wire combined_stall,    // 组合暂停信号
+    
+    //enable signals from previous stage
     input wire EX_MEM_enable_out, // 来自执行阶段的使能信号
+    
+    //from previous stage
     input wire [31:0] EX_MEM_PC,  // 来自执行阶段的程序计数器
     input wire [31:0] EX_MEM_ALUResult, // 来自执行阶段的ALU结果（用于内存操作的地址或寄存器写入内容）
     input wire [31:0] EX_MEM_WriteData, // 来自执行阶段的写数据
     input wire [4:0] EX_MEM_Rd,   // 来自执行阶段的目标寄存器
-    input wire EX_MEM_RegWrite,   // 来自执行阶段的寄存器写使能信号
     input wire EX_MEM_MemRead,    // 来自执行阶段的内存读使能信号
     input wire EX_MEM_MemWrite,   // 来自执行阶段的内存写使能信号
-    input wire EX_MEM_MemToReg
+    input wire EX_MEM_MemToReg,   // 来自执行阶段的内存写入寄存器选择信号
+    input wire EX_MEM_RegWrite,   // 来自执行阶段的寄存器写使能信号
 
+    //to next stage
     output reg [31:0] MEM_WB_PC,  // 传递到写回阶段的程序计数器
     output reg [31:0] MEM_WB_ReadData, // 传递到寄存器文件的写回数据
     output reg [31:0] MEM_WB_ALUResult, // 传递到下一个阶段的ALU结果
     output reg [4:0] MEM_WB_Rd,        // 传递到写回阶段的目标寄存器
     output reg MEM_WB_RegWrite,        // 传递到写回阶段的寄存器写使能信号
     output wire MEM_WB_MemToReg
+    
+    //next stage enable signal
     output reg MEM_WB_enable_out       // 内存阶段的使能信号
 );
 

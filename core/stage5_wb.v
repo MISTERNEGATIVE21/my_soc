@@ -1,15 +1,23 @@
 module WB_stage (
+    //system signals
     input wire clk,               // Clock signal
     input wire reset_n,           // Asynchronous reset (active low)
+    
+    //Golobal stall signal
     input wire combined_stall,    // in: Combined stall signal
+    
+    //input from previous stage
     input wire [31:0] MEM_WB_PC,  // in: Program counter from MEM stage
     input wire [31:0] MEM_WB_ReadData, // in: Read data from MEM stage
     input wire [31:0] MEM_WB_ALUResult, // in: ALU result from MEM stage
     input wire [4:0] MEM_WB_Rd,   // in: Destination register from MEM stage
     input wire MEM_WB_RegWrite,   // in: Register write enable from MEM stage
     input wire MEM_WB_MemToReg,   // in: Memory to register signal from MEM stage
+    
+    //enable signal from previous stage
     input wire MEM_WB_enable_out, // in: Enable signal from MEM stage
 
+    //output to next stage
     output reg WB_RegWrite,       // out: Register write enable to register file
     output reg [31:0] WB_WriteData, // out: Write data to register file
     output reg [4:0] WB_Rd,       // out: Destination register to register file

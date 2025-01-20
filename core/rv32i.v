@@ -83,10 +83,10 @@ module PipelineRV32ICore_AHB #(
     ID_stage id_stage (
         .clk(clk),                           // in: Clock signal
         .reset_n(reset_n),                   // in: Asynchronous reset (active low)
-        .combined_stall(combined_stall)      // in: Combined stall signal
+        .combined_stall(combined_stall),     // in: Combined stall signal
         .IF_ID_PC(IF_ID_PC),                 // in: Program counter from IF stage
         .IF_ID_Instruction(IF_ID_Instruction), // in: Instruction from IF stage
-        .IF_ID_enable_out(IF_ID_enable_out), // in: Fetch enable signal from hazard control
+        .IF_ID_enable_out(IF_ID_enable_out), // in: Enable signal from IF stage
         .ID_EX_PC(ID_EX_PC),                 // out: Program counter to EX stage
         .ID_EX_ReadData1(ID_EX_ReadData1),   // out: Read data 1 to EX stage
         .ID_EX_ReadData2(ID_EX_ReadData2),   // out: Read data 2 to EX stage
@@ -96,21 +96,22 @@ module PipelineRV32ICore_AHB #(
         .ID_EX_Rd(ID_EX_Rd),                 // out: Destination register to EX stage
         .ID_EX_Funct7(ID_EX_Funct7),         // out: Funct7 field to EX stage
         .ID_EX_Funct3(ID_EX_Funct3),         // out: Funct3 field to EX stage
-        .ID_EX_ALUOp(ID_EX_ALUOp),          //      
-        .ID_EX_ALUOp(ID_EX_ALUOp),          //       
+        .ID_EX_ALUSrc(ID_EX_ALUSrc),         // out: ALU source control signal to EX stage
+        .ID_EX_ALUOp(ID_EX_ALUOp),           // out: ALU operation control signal to EX stage
+        .ID_EX_Branch(ID_EX_Branch),         // out: Branch signal to EX stage
         .ID_EX_MemRead(ID_EX_MemRead),       // out: Memory read enable to EX stage
         .ID_EX_MemWrite(ID_EX_MemWrite),     // out: Memory write enable to EX stage
-        .ID_EX_RegWrite(ID_EX_RegWrite),     // out: Register write enable to EX stage
         .ID_EX_MemToReg(ID_EX_MemToReg),     // out: Memory to register signal to EX stage
-        .ID_EX_Branch(ID_EX_Branch),         // out: Branch signal to EX stage
-        .ID_EX_enable_out(ID_EX_enable_out),     // out: Memory to register signal to EX stage
-    );
+        .ID_EX_RegWrite(ID_EX_RegWrite),     // out: Register write enable to EX stage
+        .ID_EX_enable_out(ID_EX_enable_out)  // out: Enable signal to EX stage
+    );   
 
     // EX stage
     EX_stage ex_stage (
         .clk(clk),                           // in: Clock signal
         .reset_n(reset_n),                   // in: Asynchronous reset (active low)
-        .combined_stall(combined_stall)      // in: Combined stall signal
+        .combined_stall(combined_stall),     // in: Combined stall signal
+        .ID_EX_enable_out(ID_EX_enable_out), // in: Enable signal from ID stage
         .ID_EX_PC(ID_EX_PC),                 // in: Program counter from ID stage
         .ID_EX_ReadData1(ID_EX_ReadData1),   // in: Read data 1 from ID stage
         .ID_EX_ReadData2(ID_EX_ReadData2),   // in: Read data 2 from ID stage
@@ -118,22 +119,22 @@ module PipelineRV32ICore_AHB #(
         .ID_EX_Rd(ID_EX_Rd),                 // in: Destination register from ID stage
         .ID_EX_Funct7(ID_EX_Funct7),         // in: Funct7 field from ID stage
         .ID_EX_Funct3(ID_EX_Funct3),         // in: Funct3 field from ID stage
+        .ID_EX_ALUSrc(ID_EX_ALUSrc),         // in: ALU source control signal from ID stage
+        .ID_EX_ALUOp(ID_EX_ALUOp),           // in: ALU operation control signal
+        .ID_EX_Branch(ID_EX_Branch),         // in: Branch signal from ID stage
         .ID_EX_MemRead(ID_EX_MemRead),       // in: Memory read enable from ID stage
         .ID_EX_MemWrite(ID_EX_MemWrite),     // in: Memory write enable from ID stage
+        .ID_EX_MemtoReg(ID_EX_MemtoReg),     // in: Memory to register signal from ID stage
         .ID_EX_RegWrite(ID_EX_RegWrite),     // in: Register write enable from ID stage
-        .ID_EX_MemToReg(ID_EX_MemToReg),     // in: Memory to register signal from ID stage
-        .ID_EX_Branch(ID_EX_Branch),         // in: Branch signal from ID stage
-        .ID_EX_enable_out(ID_EX_enable_out), // in: Memory to register signal to EX stage
         .EX_MEM_PC(EX_MEM_PC),               // out: Program counter to MEM stage
         .EX_MEM_ALUResult(EX_MEM_ALUResult), // out: ALU result to MEM stage
         .EX_MEM_WriteData(EX_MEM_WriteData), // out: Write data to MEM stage
         .EX_MEM_Rd(EX_MEM_Rd),               // out: Destination register to MEM stage
-        .EX_MEM_RegWrite(EX_MEM_RegWrite),   // out: Register write enable to MEM stage
-        .EX_MEM_MemRead(EX_MEM_MemRead),     // out: Memory read enable to MEM stage
-        .EX_MEM_MemWrite(EX_MEM_MemWrite),   // out: Memory write enable to MEM stage
-        .EX_MEM_MemToReg(EX_MEM_MemToReg),   // out: Memory to register signal to MEM stage
-        .EX_MEM_Branch(EX_MEM_Branch),       // out: Branch signal to MEM stage
-        .EX_MEM_enable_out(EX_MEM_enable_out), //out: Enable signal from EX stage
+        .EX_MEM_MemRead(EX_MEM_MemRead),     // out: Memory read control signal to MEM stage
+        .EX_MEM_MemWrite(EX_MEM_MemWrite),   // out: Memory write control signal to MEM stage
+        .EX_MEM_MemToReg(EX_MEM_MemToReg),   // out: Memory to register control signal to MEM stage
+        .EX_MEM_RegWrite(EX_MEM_RegWrite),   // out: Register write control signal to MEM stage
+        .EX_MEM_enable_out(EX_MEM_enable_out) // out: Enable signal to MEM stage
     );
 
     // MEM stage
@@ -150,6 +151,28 @@ module PipelineRV32ICore_AHB #(
         .EX_MEM_MemRead(EX_MEM_MemRead),     // in: Memory read enable from EX stage
         .EX_MEM_MemWrite(EX_MEM_MemWrite),   // in: Memory write enable from EX stage
         .EX_MEM_MemToReg(EX_MEM_MemToReg),   // in: Memory to register signal to MEM stage
+        .MEM_WB_PC(MEM_WB_PC),               // out: Program counter to WB stage
+        .MEM_WB_ReadData(MEM_WB_ReadData),   // out: Read data to WB stage
+        .MEM_WB_ALUResult(MEM_WB_ALUResult), // out: ALU result to WB stage
+        .MEM_WB_Rd(MEM_WB_Rd),               // out: Destination register to WB stage
+        .MEM_WB_RegWrite(MEM_WB_RegWrite),   // out: Register write enable to WB stage
+        .MEM_WB_MemToReg(MEM_WB_MemToReg),   // out: Memory to register signal to WB stage
+        .MEM_WB_enable_out(MEM_WB_enable_out) // out: Enable signal to WB stage
+    );
+
+    // MEM stage
+    MEM_stage mem_stage (
+        .clk(clk),                           // in: Clock signal
+        .reset_n(reset_n),                   // in: Asynchronous reset (active low)
+        .EX_MEM_enable_out(EX_MEM_enable_out), // in: Enable signal from EX stage
+        .EX_MEM_PC(EX_MEM_PC),               // in: Program counter from EX stage
+        .EX_MEM_ALUResult(EX_MEM_ALUResult), // in: ALU result from EX stage
+        .EX_MEM_WriteData(EX_MEM_WriteData), // in: Write data from EX stage
+        .EX_MEM_Rd(EX_MEM_Rd),               // in: Destination register from EX stage
+        .EX_MEM_RegWrite(EX_MEM_RegWrite),   // in: Register write enable from EX stage
+        .EX_MEM_MemRead(EX_MEM_MemRead),     // in: Memory read enable from EX stage
+        .EX_MEM_MemWrite(EX_MEM_MemWrite),   // in: Memory write enable from EX stage
+        .EX_MEM_MemToReg(EX_MEM_MemToReg),   // in: Memory to register signal from EX stage
         .MEM_WB_PC(MEM_WB_PC),               // out: Program counter to WB stage
         .MEM_WB_ReadData(MEM_WB_ReadData),   // out: Read data to WB stage
         .MEM_WB_ALUResult(MEM_WB_ALUResult), // out: ALU result to WB stage
@@ -205,6 +228,6 @@ module PipelineRV32ICore_AHB #(
 
     // Next PC logic
     wire [31:0] next_pc;                     // out: Next program counter value
-    assign next_pc = /* logic to determine the next PC value */;
+    assign next_pc = EX_MEM_PC /* logic to determine the next PC value */;
 
 endmodule
