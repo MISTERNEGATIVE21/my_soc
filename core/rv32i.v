@@ -40,6 +40,7 @@ module PipelineRV32ICore_AHB #(
     reg ID_EX_RegWrite;            // out: Register write enable to EX stage
     reg ID_EX_MemToReg;            // out: Memory to register signal to EX stage
     reg ID_EX_Branch;              // out: Branch signal to EX stage
+    reg ID_EX_Jump;                // out: Jump signal to EX stage
     reg [31:0] EX_MEM_PC;          // out: Program counter to MEM stage
     reg [31:0] EX_MEM_ALUResult;   // out: ALU result to MEM stage
     reg [31:0] EX_MEM_WriteData;   // out: Write data to MEM stage
