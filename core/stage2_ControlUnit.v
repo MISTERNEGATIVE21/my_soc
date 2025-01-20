@@ -32,13 +32,13 @@ module ControlUnit (
     input wire clk,          // Clock signal
     input wire reset_n,      // Active-low reset signal
     input [6:0] opcode,      // Opcode input
-    output reg [1:0] ALUOp,  // ALU operation control signal
-    output reg MemRead,      // Memory read control signal
-    output reg MemtoReg,     // Memory to register control signal
-    output reg MemWrite,     // Memory write control signal
-    output reg ALUSrc,       // ALU source control signal
-    output reg RegWrite,     // Register write control signal
-    output reg Branch        // Branch control signal
+    output reg ALUSrc,       // ALU source control signal, to ex-stage, alu
+    output reg [1:0] ALUOp,  // ALU operation control signal, to ex-stage, alu
+    output reg Branch        // Branch control signal, to ex-stage, branch
+    output reg MemRead,      // Memory read control signal, to mem-stage, read  
+    output reg MemWrite,     // Memory write control signal, to mem-stage, write
+    output reg MemtoReg,     // Memory to register control signal, to wb-stage, write-srource select
+    output reg RegWrite,     // Register write control signal, to wb-stage, write-enable
 );
 
     // Control signal logic based on opcode

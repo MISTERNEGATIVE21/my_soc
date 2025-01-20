@@ -37,14 +37,24 @@ Branch = 0;
 
 
 module ID_stage (
+    //input -----------------------------------------------------------------
+    //system signals
     input wire clk,                    // Clock input
     input wire reset_n,                // Asynchronous reset (active low)
+
+    //golobal stall signal
     input wire combined_stall,         // Combined stall signal
+
+    //from previous stage
     input wire [31:0] IF_ID_PC,        // Input from IF/ID pipeline register, carrying Program Counter
     input wire [31:0] IF_ID_Instruction,// Input from IF/ID pipeline register, carrying instruction
     input wire IF_ID_enable_out,       // Input from fetch stage, indicating fetch enable
 
+    //output -----------------------------------------------------------------
+    //form previous stage
     output reg [31:0] ID_EX_PC,        // Output to ID/EX pipeline register, carrying Program Counter
+
+    //form id
     output reg [31:0] ID_EX_ReadData1, // Output to ID/EX pipeline register, carrying Read Data 1
     output reg [31:0] ID_EX_ReadData2, // Output to ID/EX pipeline register, carrying Read Data 2
     output reg [31:0] ID_EX_Immediate, // Output to ID/EX pipeline register, carrying Immediate value
@@ -54,16 +64,16 @@ module ID_stage (
     output reg [6:0] ID_EX_Funct7,     // Output to ID/EX pipeline register, carrying funct7 field
     output reg [2:0] ID_EX_Funct3,     // Output to ID/EX pipeline register, carrying funct3 field
 
-    output wire [1:0] ID_EX_ALUOp,     // Output from ControlUnit, ALU operation control signal
-    output wire ID_EX_MemRead,         // Output from ControlUnit, Memory read control signal
-    output wire ID_EX_MemtoReg,        // Output from ControlUnit, Memory to register control signal
-    output wire ID_EX_MemWrite,        // Output from ControlUnit, Memory write control signal
+    //form control unit
     output wire ID_EX_ALUSrc,          // Output from ControlUnit, ALU source control signal
-    output wire ID_EX_RegWrite,        // Output from ControlUnit, Register write control signal
+    output wire [1:0] ID_EX_ALUOp,     // Output from ControlUnit, ALU operation control signal
     output wire ID_EX_Branch,        // Output from ControlUnit, Register write control signal
+    output wire ID_EX_MemRead,         // Output from ControlUnit, Memory read control signal
+    output wire ID_EX_MemWrite,        // Output from ControlUnit, Memory write control signal
+    output wire ID_EX_MemtoReg,        // Output from ControlUnit, Memory to register control signal
+    output wire ID_EX_RegWrite,        // Output from ControlUnit, Register write control signal
 
-    output wire [31:0] ID_EX_ReadData1_out, // Output from RegisterFile, Read Data 1
-    output wire [31:0] ID_EX_ReadData2_out  // Output from RegisterFile, Read Data 2
+    //enable signal to next stage
     output reg ID_EX_enable_out,       // Output to ID/EX pipeline register, indicating enable
 );
 
@@ -79,11 +89,12 @@ module ID_stage (
     // Instantiate ControlUnit
     ControlUnit cu (
         .opcode(opcode),                 // Input signal
-        .ALUOp(ID_EX_ALUOp),             // Output signal
-        .MemRead(ID_EX_MemRead),         // Output signal
-        .MemtoReg(ID_EX_MemtoReg),       // Output signal
-        .MemWrite(ID_EX_MemWrite),       // Output signal
         .ALUSrc(ID_EX_ALUSrc),           // Output signal
+        .ALUOp(ID_EX_ALUOp),             // Output signal
+        .Branch(ID_EX_Branch)            // Output signal
+        .MemRead(ID_EX_MemRead),         // Output signal
+        .MemWrite(ID_EX_MemWrite),       // Output signal
+        .MemtoReg(ID_EX_MemtoReg),       // Output signal
         .RegWrite(ID_EX_RegWrite)        // Output signal
     );
 

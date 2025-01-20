@@ -17,11 +17,17 @@ If execute_enable is part of a more complex control logic that takes into accoun
 */
 
 module EX_stage (
+    //system signals
     input wire clk,                      // Clock input
     input wire reset_n,                  // Asynchronous reset (active low)
+
+    //golobal stall signal
     input wire combined_stall,           // Combined stall signal
+
+    //enable signals from previous stage
     input wire ID_EX_enable_out,         // Input from ID stage, indicating enable
     
+    //from previous stage
     input wire [31:0] ID_EX_PC,          // Input from ID/EX pipeline register, Program Counter
     input wire [31:0] ID_EX_ReadData1,   // Input from ID/EX pipeline register, Read Data 1
     input wire [31:0] ID_EX_ReadData2,   // Input from ID/EX pipeline register, Read Data 2
@@ -30,22 +36,26 @@ module EX_stage (
     input wire [6:0] ID_EX_Funct7,       // Input from ID/EX pipeline register, funct7 field
     input wire [2:0] ID_EX_Funct3,       // Input from ID/EX pipeline register, funct3 field
 
-    input wire [1:0] ID_EX_ALUOp,        // Input from ControlUnit, ALU operation control signal
-    input wire ID_EX_MemRead,         // Output from ControlUnit, Memory read control signal
-    input wire ID_EX_MemtoReg,        // Output from ControlUnit, Memory to register control signal
-    input wire ID_EX_MemWrite,        // Output from ControlUnit, Memory write control signal
+    //from control unit
     input wire ID_EX_ALUSrc,          // Output from ControlUnit, ALU source control signal
-    input wire ID_EX_RegWrite,        // Output from ControlUnit, Register write control signal
+    input wire [1:0] ID_EX_ALUOp,        // Input from ControlUnit, ALU operation control signal
     input wire ID_EX_Branch,        // Output from ControlUnit, Register write control signal
+    input wire ID_EX_MemRead,         // Output from ControlUnit, Memory read control signal
+    input wire ID_EX_MemWrite,        // Output from ControlUnit, Memory write control signal
+    input wire ID_EX_MemtoReg,        // Output from ControlUnit, Memory to register control signal
+    input wire ID_EX_RegWrite,        // Output from ControlUnit, Register write control signal
 
+    //output
     output reg [31:0] EX_MEM_PC,         // Output to EX/MEM pipeline register, Program Counter
     output reg [31:0] EX_MEM_ALUResult,  // Output to EX/MEM pipeline register, ALU result
     output reg [31:0] EX_MEM_WriteData,  // Output to EX/MEM pipeline register, Write Data
     output reg [4:0] EX_MEM_Rd,          // Output to EX/MEM pipeline register, destination register
-    output reg EX_MEM_RegWrite,          // Output to EX/MEM pipeline register, Register write control signal
     output reg EX_MEM_MemRead,    // out: Memory read enable to MEM stage
     output reg EX_MEM_MemWrite,   // out: Memory write enable to MEM stage
     output reg EX_MEM_MemToReg,   // out: Memory to register signal to MEM stage
+    output reg EX_MEM_RegWrite,          // Output to EX/MEM pipeline register, Register write control signal
+
+    //enable signal to next stage
     output reg EX_MEM_enable_out  // out: Enable signal to MEM stage
 );
 
@@ -61,10 +71,13 @@ module EX_stage (
         .ALUControl(ALUControl)          // Output signal
     );
 
+    // Select ALU second input based on ALUSrc signal
+    assign ALUInput2 = ID_EX_ALUSrc ? ID_EX_Immediate : ID_EX_ReadData2;
+
     // Instantiate ALU
     ALU alu (
         .A(ID_EX_ReadData1),             // Input signal
-        .B(ID_EX_ReadData2),             // Input signal
+        .B(ALUInput2),                   // Input signal
         .ALUControl(ALUControl),         // Input signal
         .Result(ALUResult),              // Output signal
         .Zero(Zero)                      // Output signal
