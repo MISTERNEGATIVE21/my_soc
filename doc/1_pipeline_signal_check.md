@@ -36,4 +36,9 @@ jump is miss in contrl unit
 ## 2.3. fence/system not set signal
 is ok, this two case has not involve alu/mem/reg operation
 
+## flush_pipeline
+当 control hazard 触发的时候，需要...
+
+
+
 

@@ -20,18 +20,30 @@ module HazardDetectionUnit (
     input wire EX_MEM_RegWrite,
     input wire [4:0] MEM_WB_Rd,
     input wire MEM_WB_RegWrite,
-    output reg hazard_stall
+    input wire branch_taken,       // Signal indicating if a branch is taken
+    input wire branch_mispredict,  // Signal indicating if a branch was mispredicted
+    output reg hazard_stall,
+    output reg flush_pipeline      // Signal to flush the pipeline
 );
 
     always @(posedge clk or negedge reset_n) begin
         if (~reset_n) begin
             hazard_stall <= 0;
+            flush_pipeline <= 0;
         end else begin
+            // Data hazard detection
             if ((EX_MEM_RegWrite && (EX_MEM_Rd != 0) && ((EX_MEM_Rd == ID_EX_Rs1) || (EX_MEM_Rd == ID_EX_Rs2))) ||
                 (MEM_WB_RegWrite && (MEM_WB_Rd != 0) && ((MEM_WB_Rd == ID_EX_Rs1) || (MEM_WB_Rd == ID_EX_Rs2)))) begin
                 hazard_stall <= 1;
             end else begin
                 hazard_stall <= 0;
+            end
+            
+            // Control hazard detection
+            if (branch_mispredict) begin
+                flush_pipeline <= 1;
+            end else begin
+                flush_pipeline <= 0;
             end
         end
     end
