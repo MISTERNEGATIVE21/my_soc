@@ -63,7 +63,7 @@ module PipelineRV32ICore_AHB #(
     reg ID_EX_enable_out;          // out: Enable signal to next stage
     reg EX_MEM_enable_out;         // out: Enable signal to next stage
     reg MEM_WB_enable_out;         // out: Enable signal to next stage
-    
+
     wire combined_stall;           // out: Combined stall signal
     wire hazard_detected;          // out: Hazard detection signal
 
@@ -109,6 +109,7 @@ module PipelineRV32ICore_AHB #(
         .ID_EX_ALUSrc(ID_EX_ALUSrc),         // out: ALU source control signal to EX stage
         .ID_EX_ALUOp(ID_EX_ALUOp),           // out: ALU operation control signal to EX stage
         .ID_EX_Branch(ID_EX_Branch),         // out: Branch signal to EX stage
+        .ID_EX_Jump(ID_EX_Jump),             // out: Branch signal to EX stage       
         .ID_EX_MemRead(ID_EX_MemRead),       // out: Memory read enable to EX stage
         .ID_EX_MemWrite(ID_EX_MemWrite),     // out: Memory write enable to EX stage
         .ID_EX_MemToReg(ID_EX_MemToReg),     // out: Memory to register signal to EX stage
@@ -132,6 +133,7 @@ module PipelineRV32ICore_AHB #(
         .ID_EX_ALUSrc(ID_EX_ALUSrc),         // in: ALU source control signal from ID stage
         .ID_EX_ALUOp(ID_EX_ALUOp),           // in: ALU operation control signal
         .ID_EX_Branch(ID_EX_Branch),         // in: Branch signal from ID stage
+        .ID_EX_Jump(ID_EX_Jump),         // in: Branch signal from ID stage       
         .ID_EX_MemRead(ID_EX_MemRead),       // in: Memory read enable from ID stage
         .ID_EX_MemWrite(ID_EX_MemWrite),     // in: Memory write enable from ID stage
         .ID_EX_MemToReg(ID_EX_MemToReg),     // in: Memory to register signal from ID stage

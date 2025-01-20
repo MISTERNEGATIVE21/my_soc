@@ -8,7 +8,8 @@ module IF_stage (
     
     //golobal stall signal
     input wire combined_stall,    // Combined stall signal
-    input wire EX_clear_IF_ID,         // banch or jump, clear if/id stage
+    input wire EX_clear_IF_ID,    // banch or jump, clear if/id stage
+
     //enable signals from previous stage
     input wire fetch_enable,      // Fetch enable signal for hazard control
     input wire [31:0] next_pc,    // Next program counter value
