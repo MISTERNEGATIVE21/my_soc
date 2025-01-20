@@ -60,21 +60,19 @@ module PipelineRV32ICore_AHB #(
 
     // Control signals
     wire fetch_enable;             // out: Fetch enable signal from hazard control
+
+    // enalbe signal to next stage
     reg IF_ID_enable_out;          // out: Enable signal to next stage
     reg ID_EX_enable_out;          // out: Enable signal to next stage
     reg EX_MEM_enable_out;         // out: Enable signal to next stage
     reg MEM_WB_enable_out;         // out: Enable signal to next stage
 
     wire combined_stall;           // out: Combined stall signal
-    wire hazard_detected;          // out: Hazard detection signal
+    wire hazard_stall;          // out: Hazard detection signal
 
     // Decode rs1 and rs2 from IF_ID_Instruction
     wire [4:0] rs1 = IF_ID_Instruction[19:15]; // out: Source register 1
     wire [4:0] rs2 = IF_ID_Instruction[24:20]; // out: Source register 2
-
-    // enalbe signal to next stage
-
-
 
     // IF stage
     IF_stage if_stage (
@@ -207,16 +205,20 @@ module PipelineRV32ICore_AHB #(
 
     // Hazard detection unit
     HazardDetectionUnit hazard_unit (
-        .ID_EX_MemRead(ID_EX_MemRead),       // in: Memory read enable from EX stage
-        .ID_EX_Rd(ID_EX_Rd),                 // in: Destination register from EX stage
-        .IF_ID_Rs1(rs1),                     // in: Source register 1 from ID stage
-        .IF_ID_Rs2(rs2),                     // in: Source register 2 from ID stage
-        .hazard_detected(hazard_detected)    // out: Hazard detection signal
-    );
+        .clk(clk),                           // in: Clock signal
+        .reset_n(reset_n),                   // in: Active-low reset signal
+        .ID_EX_Rs1(ID_EX_Rs1),               // in: Source register 1 from ID/EX stage
+        .ID_EX_Rs2(ID_EX_Rs2),               // in: Source register 2 from ID/EX stage
+        .EX_MEM_Rd(EX_MEM_Rd),               // in: Destination register from EX/MEM stage
+        .EX_MEM_RegWrite(EX_MEM_RegWrite),   // in: Register write enable from EX/MEM stage
+        .MEM_WB_Rd(MEM_WB_Rd),               // in: Destination register from MEM/WB stage
+        .MEM_WB_RegWrite(MEM_WB_RegWrite),   // in: Register write enable from MEM/WB stage
+        .hazard_stall(hazard_stall)          // out: Hazard stall signal
+    );   
 
     // Control logic
     assign fetch_enable = !combined_stall;   // out: Fetch enable signal
-    assign combined_stall = hazard_detected; // out: Combined stall signal
+    assign combined_stall = hazard_stall; // out: Combined stall signal
 
     // Next PC logic
     wire [31:0] next_pc;                     // out: Next program counter value

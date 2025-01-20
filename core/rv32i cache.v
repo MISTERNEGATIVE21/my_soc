@@ -258,9 +258,9 @@ module PipelineRV32ICore_AHB_Cache #(
         .ID_EX_Rs1(ID_EX_Rs1),   // Input signal
         .ID_EX_Rs2(ID_EX_Rs2),   // Input signal
         .EX_MEM_Rd(EX_MEM_Rd),   // Input signal
-        .EX_MEM_RegWrite(EX_MEM_RegWrite), // Output signal
-        .MEM_WB_Rd(MEM_WB_Rd),   // Output signal
-        .MEM_WB_RegWrite(MEM_WB_RegWrite), // Output signal
+        .EX_MEM_RegWrite(EX_MEM_RegWrite), // Input signal
+        .MEM_WB_Rd(MEM_WB_Rd),   // Input signal
+        .MEM_WB_RegWrite(MEM_WB_RegWrite), // Input signal
         .hazard_stall(hazard_stall) // Output signal
     );
 
