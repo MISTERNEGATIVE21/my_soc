@@ -19,15 +19,19 @@ module testbench;
     my_soc uut (
         .clk(clk),
         .reset_n(reset_n),
+        
         .apb_clk(apb_clk),
         .apb_resetn(apb_resetn),
+
+        // .TCK(TCK),
+        // .TMS(TMS),
+        // .TDI(TDI),
+        // .TDO(TDO)
+
+        .uart_clk(uart_clk),   
         .uart_tx(uart_tx),
         .uart_rx(uart_rx),
-        .uart_clk(uart_clk),       
-        .TCK(TCK),
-        .TMS(TMS),
-        .TDI(TDI),
-        .TDO(TDO)
+   
     );
 
     // Clock generation

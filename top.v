@@ -10,10 +10,11 @@ module my_soc (
     output uart_tx,
     input uart_rx,
     // JTAG signals
-    input TCK,
-    input TMS,
-    input TDI,
-    output TDO,
+    // input TCK,
+    // input TMS,
+    // input TDI,
+    // output TDO,
+    
     // UART clock
     input uart_clk // Added uart_clk input
 );
@@ -136,7 +137,7 @@ module my_soc (
         //system signals
         .clk(clk),
         .reset_n(reset_n),
-        
+
         //ahb master interface
         .HADDR(HADDR_CPU),
         .HBURST(HBURST_CPU),
