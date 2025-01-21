@@ -8,11 +8,13 @@ module IF_stage (
     
     //golobal stall signal
     input wire combined_stall,    // Combined stall signal
-    input wire EX_clear_IF_ID,    // banch or jump, clear if/id stage
+    input wire hazard_flush,    // banch or jump, clear if/id stage
 
     //enable signals from previous stage
     input wire fetch_enable,      // Fetch enable signal for hazard control
     input wire [31:0] next_pc,    // Next program counter value
+    input wire branch_prediction,      // Prediction from BPU
+    input wire [31:0] predicted_target, // Predicted branch target address
     
     //output to next stage
     output reg [31:0] IF_ID_PC,   // Program counter to ID stage
@@ -41,16 +43,17 @@ module IF_stage (
             IF_ID_PC <= 32'b0;
             IF_ID_Instruction <= 32'b0;
             IF_ID_enable_out <= 1'b0;
-        end else if (EX_clear_IF_ID) begin
+        end else if (hazard_flush) begin
             // Clear IF/ID stage
             IF_ID_PC <= 32'b0;
             IF_ID_Instruction <= 32'b0;
-            IF_ID_enable_out <= 1'b0;
+            IF_ID_enable_out <= 1'b1;
         end else if (combined_stall) begin
             // Stall the pipeline (hold current state)
             IF_ID_enable_out <= 1'b0;
         end else if (fetch_enable) begin
-            pc <= next_pc;
+            // pc <= next_pc;
+            PC <= branch_prediction ? predicted_target : next_pc;
             IF_ID_PC <= pc;
             IF_ID_Instruction <= i_memory_rdata;
             IF_ID_enable_out <= 1'b1;

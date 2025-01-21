@@ -3,8 +3,9 @@ module MEM_stage (
     input wire clk,               // 时钟信号
     input wire reset_n,           // 异步复位信号（低电平有效）
     
-    //golobal stall signal
+    //global stall signal
     input wire combined_stall,    // 组合暂停信号
+    input wire [1:0] hazard_stall, // hazard stall signal
     
     //enable signals from previous stage
     input wire EX_MEM_enable_out, // 来自执行阶段的使能信号
@@ -25,7 +26,7 @@ module MEM_stage (
     output reg [31:0] MEM_WB_ALUResult, // 传递到下一个阶段的ALU结果
     output reg [4:0] MEM_WB_Rd,        // 传递到写回阶段的目标寄存器
     output reg MEM_WB_RegWrite,        // 传递到写回阶段的寄存器写使能信号
-    output wire MEM_WB_MemToReg
+    output reg MEM_WB_MemToReg,        // 传递到写回阶段的内存写入寄存器选择信号
     
     //next stage enable signal
     output reg MEM_WB_enable_out       // 内存阶段的使能信号
@@ -35,6 +36,7 @@ module MEM_stage (
     wire [31:0] d_memory_rdata;
     reg d_memory_mem_read;
     reg d_memory_mem_write;
+
     d_memory #(
         .ADDR_WIDTH(32),
         .DATA_WIDTH(32),

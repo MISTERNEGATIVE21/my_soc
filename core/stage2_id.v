@@ -33,10 +33,10 @@ module ID_stage (
     input wire clk,                    // Clock input
     input wire reset_n,                // Asynchronous reset (active low)
 
-    //golobal stall signal
+    //global stall signal
     input wire combined_stall,         // Combined stall signal
-    input wire [1:0] hazard_stall ,         // hazard stall signal
-    input wire EX_clear_IF_ID,            // banch or jump occour , clear if/id stage
+    input wire [1:0] hazard_stall,     // Hazard stall signal
+    input wire EX_clear_IF_ID,         // Branch or jump occur, clear IF/ID stage
 
     //from previous stage
     input wire [31:0] IF_ID_PC,        // Input from IF/ID pipeline register, carrying Program Counter
@@ -44,10 +44,10 @@ module ID_stage (
     input wire IF_ID_enable_out,       // Input from fetch stage, indicating fetch enable
 
     //output -----------------------------------------------------------------
-    //form previous stage
+    //from previous stage
     output reg [31:0] ID_EX_PC,        // Output to ID/EX pipeline register, carrying Program Counter
 
-    //form id
+    //from id
     output reg [31:0] ID_EX_ReadData1, // Output to ID/EX pipeline register, carrying Read Data 1
     output reg [31:0] ID_EX_ReadData2, // Output to ID/EX pipeline register, carrying Read Data 2
     output reg [31:0] ID_EX_Immediate, // Output to ID/EX pipeline register, carrying Immediate value
@@ -57,18 +57,18 @@ module ID_stage (
     output reg [6:0] ID_EX_Funct7,     // Output to ID/EX pipeline register, carrying funct7 field
     output reg [2:0] ID_EX_Funct3,     // Output to ID/EX pipeline register, carrying funct3 field
 
-    //form control unit
+    //from control unit
     output wire ID_EX_ALUSrc,          // Output from ControlUnit, ALU source control signal
     output wire [1:0] ID_EX_ALUOp,     // Output from ControlUnit, ALU operation control signal
-    output wire ID_EX_Branch,           // Output from ControlUnit, branch control signal
-    output wire ID_EX_Jump,             // Output from ControlUnit, jump control signal 
+    output wire ID_EX_Branch,          // Output from ControlUnit, branch control signal
+    output wire ID_EX_Jump,            // Output from ControlUnit, jump control signal 
     output wire ID_EX_MemRead,         // Output from ControlUnit, Memory read control signal
     output wire ID_EX_MemWrite,        // Output from ControlUnit, Memory write control signal
     output wire ID_EX_MemToReg,        // Output from ControlUnit, Memory to register control signal
     output wire ID_EX_RegWrite,        // Output from ControlUnit, Register write control signal
 
     //enable signal to next stage
-    output reg ID_EX_enable_out,       // Output to ID/EX pipeline register, indicating enable
+    output reg ID_EX_enable_out       // Output to ID/EX pipeline register, indicating enable
 );
 
     wire [31:0] Immediate;  // Wire for Immediate value generated
@@ -85,8 +85,8 @@ module ID_stage (
         .opcode(opcode),                 // Input signal
         .ALUSrc(ID_EX_ALUSrc),           // Output signal
         .ALUOp(ID_EX_ALUOp),             // Output signal
-        .Branch(ID_EX_Branch)            // Output signal
-        .Branch(ID_EX_Jump)            // Output signal       
+        .Branch(ID_EX_Branch),           // Output signal
+        .Jump(ID_EX_Jump),               // Output signal       
         .MemRead(ID_EX_MemRead),         // Output signal
         .MemWrite(ID_EX_MemWrite),       // Output signal
         .MemtoReg(ID_EX_MemToReg),       // Output signal
@@ -119,13 +119,13 @@ module ID_stage (
             ID_EX_Funct3 <= 3'b0;
             ID_EX_enable_out <= 1'b0;
 
-            //if stall is detected in ex stage, let ex stage go on; else, stall it
+            // If stall is detected in EX stage, let EX stage go on; else, stall it
             if (hazard_stall == 2'b01) begin
                 ID_EX_enable_out <= 1'b1;
             end
 
         end else if (EX_clear_IF_ID) begin
-            // clear if-id stage
+            // Clear IF/ID stage
             ID_EX_PC <= 32'b0;
             ID_EX_ReadData1 <= 32'b0;
             ID_EX_ReadData2 <= 32'b0;

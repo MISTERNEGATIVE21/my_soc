@@ -23,7 +23,7 @@ module EX_stage (
 
     //global stall signal
     input wire combined_stall,           // Combined stall signal
-    input wire [1:0] hazard_stall ,         // hazard stall signal
+    input wire [1:0] hazard_stall,       // Hazard stall signal
 
     //enable signals from previous stage
     input wire ID_EX_enable_out,         // Input from ID stage, indicating enable
@@ -53,6 +53,10 @@ module EX_stage (
     input wire [31:0] EX_MEM_ALUResult,  // Data forwarded from EX/MEM stage
     input wire [31:0] MEM_WB_ALUResult,  // Data forwarded from MEM/WB stage
 
+    // Branch prediction signals
+    input wire branch_prediction,      // Prediction from BPU
+    input wire [31:0] predicted_target, // Predicted branch target address
+    
     //output
     output reg [31:0] EX_MEM_PC,         // Output to EX/MEM pipeline register, Program Counter
     output reg [31:0] EX_MEM_ALUResult,  // Output to EX/MEM pipeline register, ALU result
@@ -68,6 +72,10 @@ module EX_stage (
 
     //control signals to clear IF/ID stage
     output reg EX_clear_IF_ID            // Signal to clear IF/ID stage
+
+    // Branch signals
+    output reg branch_taken,
+    output reg branch_mispredict    
 );
 
     wire [3:0] ALUControl;        // ALU control signal
@@ -75,7 +83,7 @@ module EX_stage (
     wire Zero;                    // Zero flag from ALU
     wire [31:0] ALUInput1;        // ALU first input
     wire [31:0] ALUInput2;        // ALU second input
-
+    reg [31:0] branch_target;
     // ALU control unit
     ALUControlUnit alu_control (
         .clk(clk),
@@ -121,6 +129,8 @@ module EX_stage (
             EX_MEM_MemToReg <= 1'b0;
             EX_MEM_enable_out <= 1'b0;
             EX_clear_IF_ID <= 1'b0;
+            branch_taken <= 1'b0;
+            branch_mispredict <= 1'b0;
         end else if (combined_stall) begin
             // Insert bubble (NOP) into the pipeline
             EX_MEM_PC <= 32'b0;
@@ -132,24 +142,59 @@ module EX_stage (
             EX_MEM_MemWrite <= 1'b0;
             EX_MEM_MemToReg <= 1'b0;
             EX_MEM_enable_out <= 1'b0;
-            //if stall is detected in mem stage, let mem stage go on; else, stall it
+            branch_taken <= 1'b0;
+            branch_mispredict <= 1'b0;
+
+            // If stall is detected in MEM stage, let MEM stage go on; else, stall it
             if (hazard_stall == 2'b10) begin
                 EX_MEM_enable_out <= 1'b1;
             end          
         end else if (ID_EX_enable_out) begin
-            // ID_EX_enable_out = 1, pipeline active
-            if (ID_EX_jump) begin
-                // Jump taken
-                EX_MEM_PC <= ID_EX_PC + (ID_EX_Immediate << 1);
-                EX_clear_IF_ID <= 1'b1; // Clear IF/ID stage
-            end else if (ID_EX_Branch && Zero) begin
+            // Calculate the branch target address
+            branch_target <= ID_EX_PC + (ID_EX_Immediate << 1);
+
+            if (ID_EX_Jump) begin
+                // Jump always taken
+                branch_taken <= 1'b1;
+                branch_mispredict <= 1'b0; // No misprediction check needed for jump
+                EX_clear_IF_ID <= 1'b1; // Always flush IF/ID stage on jump
+                EX_MEM_PC <= branch_target;
+            end else if (ID_EX_Branch) begin
+                if (Zero) begin
                 // Branch taken
-                EX_MEM_PC <= ID_EX_PC + (ID_EX_Immediate << 1);
-                EX_clear_IF_ID <= 1'b1; // Clear IF/ID stage
+                    branch_taken <= 1'b1;
+
+                    // Check for misprediction
+                    if (branch_prediction != branch_taken) begin
+                        branch_mispredict <= 1'b1;
+                        EX_clear_IF_ID <= 1'b1; // Flush IF/ID stage on misprediction
+                    end else begin
+                        branch_mispredict <= 1'b0;
+                        EX_clear_IF_ID <= 1'b0; // No need to flush
+                    end
+
+                    EX_MEM_PC <= branch_target;
+                end else begin
+                    // Branch not taken
+                    branch_taken <= 1'b0;
+
+                    // Check for misprediction
+                    if (branch_prediction != branch_taken) begin
+                        branch_mispredict <= 1'b1;
+                        EX_clear_IF_ID <= 1'b1; // Flush IF/ID stage on misprediction
+                    end else begin
+                        branch_mispredict <= 1'b0;
+                        EX_clear_IF_ID <= 1'b0; // No need to flush
+                    end
+
+                    EX_MEM_PC <= ID_EX_PC; // Continue sequentially
+                end
             end else begin
                 // Normal operation
                 EX_MEM_PC <= ID_EX_PC;
                 EX_clear_IF_ID <= 1'b0; // Do not clear IF/ID stage
+                branch_taken <= 1'b0;
+                branch_mispredict <= 1'b0;
             end
             
             EX_MEM_ALUResult <= ALUResult;
@@ -163,6 +208,8 @@ module EX_stage (
         end else begin
             EX_MEM_enable_out <= 1'b0; // Disable next stage
             EX_clear_IF_ID <= 1'b0; // Do not clear IF/ID stage
+            branch_taken <= 1'b0;
+            branch_mispredict <= 1'b0;
         end
     end
 
