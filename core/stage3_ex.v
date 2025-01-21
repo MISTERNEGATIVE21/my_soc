@@ -21,8 +21,9 @@ module EX_stage (
     input wire clk,                      // Clock input
     input wire reset_n,                  // Asynchronous reset (active low)
 
-    //golobal stall signal
+    //global stall signal
     input wire combined_stall,           // Combined stall signal
+    input wire [1:0] hazard_stall ,         // hazard stall signal
 
     //enable signals from previous stage
     input wire ID_EX_enable_out,         // Input from ID stage, indicating enable
@@ -46,6 +47,12 @@ module EX_stage (
     input wire ID_EX_MemToReg,           // Output from ControlUnit, Memory to register control signal
     input wire ID_EX_RegWrite,           // Output from ControlUnit, Register write control signal
 
+    //forwarding signals
+    input wire [1:0] hazard_forwardA,    // Forwarding control for ReadData1
+    input wire [1:0] hazard_forwardB,    // Forwarding control for ReadData2
+    input wire [31:0] EX_MEM_ALUResult,  // Data forwarded from EX/MEM stage
+    input wire [31:0] MEM_WB_ALUResult,  // Data forwarded from MEM/WB stage
+
     //output
     output reg [31:0] EX_MEM_PC,         // Output to EX/MEM pipeline register, Program Counter
     output reg [31:0] EX_MEM_ALUResult,  // Output to EX/MEM pipeline register, ALU result
@@ -60,12 +67,13 @@ module EX_stage (
     output reg EX_MEM_enable_out,        // Output to EX/MEM pipeline register, indicating enable
 
     //control signals to clear IF/ID stage
-    output reg EX_clear_IF_ID               // Signal to clear IF/ID stage
+    output reg EX_clear_IF_ID            // Signal to clear IF/ID stage
 );
 
     wire [3:0] ALUControl;        // ALU control signal
     wire [31:0] ALUResult;        // ALU result
     wire Zero;                    // Zero flag from ALU
+    wire [31:0] ALUInput1;        // ALU first input
     wire [31:0] ALUInput2;        // ALU second input
 
     // ALU control unit
@@ -78,15 +86,23 @@ module EX_stage (
         .ALUControl(ALUControl)
     );
 
-    // Select ALU second input based on ALUSrc signal
-    assign ALUInput2 = ID_EX_ALUSrc ? ID_EX_Immediate : ID_EX_ReadData2;
+    // Select ALU first input based on forwarding control
+    assign ALUInput1 = (hazard_forwardA == 2'b10) ? EX_MEM_ALUResult :
+                       (hazard_forwardA == 2'b01) ? MEM_WB_ALUResult :
+                       ID_EX_ReadData1;
+
+    // Select ALU second input based on ALUSrc signal and forwarding control
+    assign ALUInput2 = ID_EX_ALUSrc ? ID_EX_Immediate :
+                       (hazard_forwardB == 2'b10) ? EX_MEM_ALUResult :
+                       (hazard_forwardB == 2'b01) ? MEM_WB_ALUResult :
+                       ID_EX_ReadData2;
 
     // ALU
     ALU alu (
         .clk(clk),
         .reset_n(reset_n),
         .ALUControl(ALUControl),
-        .A(ID_EX_ReadData1),
+        .A(ALUInput1),
         .B(ALUInput2),
         .Result(ALUResult),
         .Zero(Zero)
@@ -107,7 +123,19 @@ module EX_stage (
             EX_clear_IF_ID <= 1'b0;
         end else if (combined_stall) begin
             // Insert bubble (NOP) into the pipeline
+            EX_MEM_PC <= 32'b0;
+            EX_MEM_ALUResult <= 32'b0;
+            EX_MEM_WriteData <= 32'b0;
+            EX_MEM_Rd <= 5'b0;
+            EX_MEM_RegWrite <= 1'b0;
+            EX_MEM_MemRead <= 1'b0;
+            EX_MEM_MemWrite <= 1'b0;
+            EX_MEM_MemToReg <= 1'b0;
             EX_MEM_enable_out <= 1'b0;
+            //if stall is detected in mem stage, let mem stage go on; else, stall it
+            if (hazard_stall == 2'b10) begin
+                EX_MEM_enable_out <= 1'b1;
+            end          
         end else if (ID_EX_enable_out) begin
             // ID_EX_enable_out = 1, pipeline active
             if (ID_EX_jump) begin
@@ -123,6 +151,7 @@ module EX_stage (
                 EX_MEM_PC <= ID_EX_PC;
                 EX_clear_IF_ID <= 1'b0; // Do not clear IF/ID stage
             end
+            
             EX_MEM_ALUResult <= ALUResult;
             EX_MEM_WriteData <= ID_EX_ReadData2;
             EX_MEM_Rd <= ID_EX_Rd;

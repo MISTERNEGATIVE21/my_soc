@@ -24,15 +24,7 @@ which can increase the complexity of inter-module connections.
 Recommendation:
 Given these points, it often makes sense to keep pipeline registers centralized in the core module to maintain consistency 
 and ease of understanding for the entire pipeline's flow of control signals. This approach is generally more common in pipeline designs.
-
-
-ALUOp = 2'b00;
-MemRead = 0;
-MemtoReg = 0;
-MemWrite = 0;
-ALUSrc = 1;
-RegWrite = 1;
-Branch = 0;          
+ 
 */
 
 module ID_stage (
@@ -43,6 +35,7 @@ module ID_stage (
 
     //golobal stall signal
     input wire combined_stall,         // Combined stall signal
+    input wire [1:0] hazard_stall ,         // hazard stall signal
     input wire EX_clear_IF_ID,            // banch or jump occour , clear if/id stage
 
     //from previous stage
@@ -115,7 +108,22 @@ module ID_stage (
             ID_EX_enable_out <= 1'b0;
         end else if (combined_stall) begin
             // Insert bubble (NOP) into the pipeline
+            ID_EX_PC <= 32'b0;           // Set PC to 0
+            ID_EX_ReadData1 <= 32'b0;
+            ID_EX_ReadData2 <= 32'b0;
+            ID_EX_Immediate <= 32'b0;
+            ID_EX_Rs1 <= 5'b0;
+            ID_EX_Rs2 <= 5'b0;
+            ID_EX_Rd <= 5'b0;
+            ID_EX_Funct7 <= 7'b0;
+            ID_EX_Funct3 <= 3'b0;
             ID_EX_enable_out <= 1'b0;
+
+            //if stall is detected in ex stage, let ex stage go on; else, stall it
+            if (hazard_stall == 2'b01) begin
+                ID_EX_enable_out <= 1'b1;
+            end
+
         end else if (EX_clear_IF_ID) begin
             // clear if-id stage
             ID_EX_PC <= 32'b0;

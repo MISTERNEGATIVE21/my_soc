@@ -218,7 +218,7 @@ module PipelineRV32ICore_AHB #(
 
     // Control logic
     assign fetch_enable = !combined_stall;   // out: Fetch enable signal
-    assign combined_stall = hazard_stall; // out: Combined stall signal
+    assign combined_stall = (hazard_stall != 2'b00); // out: Combined stall signal
 
     // Next PC logic
     wire [31:0] next_pc;                     // out: Next program counter value

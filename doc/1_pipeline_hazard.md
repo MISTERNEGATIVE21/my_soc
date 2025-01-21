@@ -1,4 +1,4 @@
-# data hazards
+# 1. data hazards
 Data hazards occur in pipelined processors when instructions that are close together in the instruction stream (program order) depend on each other and their execution overlaps 
 in the pipeline. There are three types of data hazards:
 
@@ -20,26 +20,65 @@ Stalling: Pausing the pipeline until the hazard is resolved.
 Forwarding (Bypassing): Passing the result directly from one pipeline stage to another without going through the register file.
 Reordering Instructions: Changing the order of instructions to avoid the hazard.
 
-the hazard is handled by Bubble Insertion correctly in core/rv32i_core.v. 
-The insertion of the NOP instruction (32'h00000013) is used to ensure that the pipeline stages are stalled appropriately when a hazard is detected. 
-This prevents incorrect data from being propagated through the pipeline and maintains the correct program execution flow.
+## 1.1. forward
 
-# control hazards
+detect
+handle : add mux input for alu-A & alu-b
+
+## 1.2. stall
+In a pipelined processor, when a stall is detected in the EX stage (or any other stage), you generally need to stall the pipeline stages before (**upstream**) the stage where the hazard is detected. The stages after (**downstream**) the detected hazard should continue executing normally.
+
+### 1.2.1. if stall detect in ex stage:
+IF/ID Stage:
+- When hazard_stall is asserted, the IF/ID register should hold its current value (stall), preventing new instructions from being fetched and decoded.
+
+EX Stage:
+- Insert a NOP (no-operation) instruction in the EX stage to prevent the instruction causing the hazard from progressing until the hazard is resolved.
+
+MEM/WB Stages:
+- Continue executing normally, as they are downstream from the hazard.
+
+### 1.2.2. if stall detect in mem stage:
+When a hazard stall occurs in the MEM stage, you need to ensure that the pipeline handles this appropriately. Typically, you would want to ensure that the stages upstream (IF, ID, and EX) are aware of the stall and handle it correctly. However, the specific actions you take can depend on the design of your pipeline and how you handle stalls.
+
+Actions to Take for MEM Stage Hazard Stall
+Stall the Pipeline:
+You should stall the IF, ID, and EX stages to prevent new instructions from entering the pipeline until the hazard is resolved.
+
+Insert NOPs:
+Insert NOPs (no-operation instructions) into the MEM stage to hold the current instruction.
+
+# 2. control hazards
 
 Handling control hazards in a pipelined RISC-V core involves managing the uncertainties that arise from branch instructions. 
 These hazards can be resolved using various techniques such as stalling, branch prediction, and delayed branching. Here are the common methods to handle control hazards:
 
 1. Stalling (Bubble Insertion):
-Introduce NOPs (No Operation) into the pipeline until the branch decision is resolved.
-This is a simple but not very efficient method.
+    Introduce NOPs (No Operation) into the pipeline until the branch decision is resolved.
+    This is a simple but not very efficient method.
 2. Branch Prediction:
-Predict the outcome of a branch (taken or not taken) and continue executing instructions based on the prediction.
-If the prediction is incorrect, flush the incorrect instructions and fetch the correct ones.
-There are different branch prediction strategies, such as static prediction (always predict taken or not taken) and dynamic prediction (using hardware like branch history tables).
+    Predict the outcome of a branch (taken or not taken) and continue executing instructions based on the prediction.
+    If the prediction is incorrect, flush the incorrect instructions and fetch the correct ones.
+    There are different branch prediction strategies, such as static prediction (always predict taken or not taken) and dynamic prediction (using hardware like branch history tables).
 3. Delayed Branching:
-Execute a fixed number of instructions following a branch instruction regardless of whether the branch is taken or not.
-This requires careful scheduling of instructions by the compiler.
+    Execute a fixed number of instructions following a branch instruction regardless of whether the branch is taken or not.
+    This requires careful scheduling of instructions by the compiler.
 4. Branch Target Buffer (BTB):
-A hardware mechanism that stores the target addresses of recently executed branch instructions.
-Helps in quickly determining the next instruction to fetch if a branch is predicted taken.
-Implementing Control Hazard Handling
+    A hardware mechanism that stores the target addresses of recently executed branch instructions.
+    Helps in quickly determining the next instruction to fetch if a branch is predicted taken.
+    Implementing Control Hazard Handling
+
+## 2.1. branch & jump & flush
+
+```mermaid
+flowchart TD;
+    A(jump) --> B((flush))
+    C(branch) --> D([no-prediction])
+    C(branch) --> E([has-prediction])
+
+    D --> D1([taken]) & D2([not-taken])
+    E --> E1([correct]) & E2([not-correct])
+
+    D1 --> B
+    E2 --> B
+```

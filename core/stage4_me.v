@@ -62,18 +62,27 @@ module MEM_stage (
             d_memory_mem_read <= 1'b0;
             d_memory_mem_write <= 1'b0;
         end else if (combined_stall) begin
-            // 在流水线中插入空泡（NOP）
-            MEM_WB_PC <= 32'b0;
-            MEM_WB_ReadData <= 32'b0;
-            MEM_WB_ALUResult <= 32'b0;
-            MEM_WB_Rd <= 5'b0;
-            MEM_WB_RegWrite <= 1'b0;
-            MEM_WB_MemToReg <= 1'b0;
-            MEM_WB_enable_out <= 1'b0;
-            d_memory_mem_read <= 1'b0;
-            d_memory_mem_write <= 1'b0;
+            // hazard detected on ex or mem stage, not stall mem stage
+            if (hazard_stall == 2'b01 || hazard_stall == 2'b10) begin
+                if (EX_MEM_enable_out) begin
+                    // EX_MEM_enable_out = 1 流水线有效 内存操作
+                    d_memory_mem_read <= EX_MEM_MemRead;
+                    d_memory_mem_write <= EX_MEM_MemWrite;
+                    MEM_WB_ReadData <= EX_MEM_MemRead ? d_memory_rdata : 32'b0;
+                    MEM_WB_ALUResult <= EX_MEM_ALUResult;
+                    MEM_WB_PC <= EX_MEM_PC;
+                    MEM_WB_Rd <= EX_MEM_Rd;
+                    MEM_WB_RegWrite <= EX_MEM_RegWrite;
+                    MEM_WB_MemToReg <= EX_MEM_MemToReg;
+                    MEM_WB_enable_out <= 1'b1;
+                end
+            end else begin  // other case of stall
+                MEM_WB_enable_out <= 1'b0;
+                d_memory_mem_read <= 1'b0;
+                d_memory_mem_write <= 1'b0;
+            end
         end else if (EX_MEM_enable_out) begin
-            // EX_MEM_enable_out = 1 流水线有效 内存操作
+            // normal case
             d_memory_mem_read <= EX_MEM_MemRead;
             d_memory_mem_write <= EX_MEM_MemWrite;
             MEM_WB_ReadData <= EX_MEM_MemRead ? d_memory_rdata : 32'b0;
