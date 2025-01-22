@@ -15,13 +15,16 @@ module IF_stage (
     input wire fetch_enable,      // Fetch enable signal for hazard control
     
     // Branch Prediction Unit output
+    input wire [1:0] hazard_stall,      // hazard stall stage
+    input wire hazard_flush,      // Branch or jump, clear IF/ID stage
+    input wire [31:0] next_pc,    // Next program counter value for flush
     input wire branch_prediction, // Branch prediction signal
     
     // Output to next stage
-    output reg [31:0] IF_ID_PC,          // Program counter to ID stage
-    output reg [31:0] IF_ID_Instruction, // Instruction to ID stage
+    output reg [31:0] IF_ID_PC,          // Program counter ID stage
+    output reg [31:0] IF_ID_Instruction, // Instruction ID stage
+    output reg IF_ID_jump_branch_taken   // Branch or jump taken signal ID stage
     output reg IF_ID_enable_out,         // Enable signal for the next stage
-    output reg IF_ID_jump_branch_taken   // Branch or jump taken signal to ID stage
 );
 
     // Internal program counter register
@@ -40,7 +43,7 @@ module IF_stage (
         .rdata(i_memory_rdata)
     );
 
-    // Instantiate ImmediateGenerator
+    // Instantiate ImmediateGenerator generate immediate from inst to determine branch/jump target address
     wire [31:0] immediate;
     ImmediateGenerator imm_gen (
         .clk(clk),
@@ -54,16 +57,16 @@ module IF_stage (
             pc <= 32'b0;
             IF_ID_PC <= 32'b0;
             IF_ID_Instruction <= 32'b0;
-            IF_ID_enable_out <= 1'b0;
             IF_ID_jump_branch_taken <= 1'b0;
+            IF_ID_enable_out <= 1'b0;
         end else if (hazard_flush) begin
             // Flush condition
             pc <= next_pc;
             IF_ID_PC <= 32'b0;
             IF_ID_Instruction <= 32'b0;
-            IF_ID_enable_out <= 1'b1;
             IF_ID_jump_branch_taken <= 1'b0;
-        end else if (combined_stall) begin
+            IF_ID_enable_out <= 1'b0;
+        end else if (hazard_stall == 2'b00 || hazard_stall == 2'b01) begin
             // Stall the pipeline (hold current state)
             IF_ID_enable_out <= 1'b0;
             IF_ID_jump_branch_taken <= 1'b0;

@@ -34,18 +34,22 @@ module ID_stage (
     input wire reset_n,                // Asynchronous reset (active low)
 
     //global stall signal
-    input wire combined_stall,         // Combined stall signal
     input wire [1:0] hazard_stall,     // Hazard stall signal
-    input wire EX_clear_IF_ID,         // Branch or jump occur, clear IF/ID stage
+    input wire hazard_flush,           // Hazard flush, clear IF/ID stage
+
+    //from previous stage
+    input wire IF_ID_jump_branch_taken,// Input from IF/ID pipeline register, indicating branch or jump taken 
 
     //from previous stage
     input wire [31:0] IF_ID_PC,        // Input from IF/ID pipeline register, carrying Program Counter
     input wire [31:0] IF_ID_Instruction,// Input from IF/ID pipeline register, carrying instruction
+
     input wire IF_ID_enable_out,       // Input from fetch stage, indicating fetch enable
 
     //output -----------------------------------------------------------------
     //from previous stage
     output reg [31:0] ID_EX_PC,        // Output to ID/EX pipeline register, carrying Program Counter
+    output reg IF_ID_jump_branch_taken, // Output to ID/EX pipeline register, carrying Read Data 1
 
     //from id
     output reg [31:0] ID_EX_ReadData1, // Output to ID/EX pipeline register, carrying Read Data 1
@@ -106,25 +110,7 @@ module ID_stage (
             ID_EX_Funct7 <= 7'b0;
             ID_EX_Funct3 <= 3'b0;
             ID_EX_enable_out <= 1'b0;
-        end else if (combined_stall) begin
-            // Insert bubble (NOP) into the pipeline
-            ID_EX_PC <= 32'b0;           // Set PC to 0
-            ID_EX_ReadData1 <= 32'b0;
-            ID_EX_ReadData2 <= 32'b0;
-            ID_EX_Immediate <= 32'b0;
-            ID_EX_Rs1 <= 5'b0;
-            ID_EX_Rs2 <= 5'b0;
-            ID_EX_Rd <= 5'b0;
-            ID_EX_Funct7 <= 7'b0;
-            ID_EX_Funct3 <= 3'b0;
-            ID_EX_enable_out <= 1'b0;
-
-            // If stall is detected in EX stage, let EX stage go on; else, stall it
-            if (hazard_stall == 2'b01) begin
-                ID_EX_enable_out <= 1'b1;
-            end
-
-        end else if (EX_clear_IF_ID) begin
+        end else if (hazard_flush) begin
             // Clear IF/ID stage
             ID_EX_PC <= 32'b0;
             ID_EX_ReadData1 <= 32'b0;
@@ -136,9 +122,29 @@ module ID_stage (
             ID_EX_Funct7 <= 7'b0;
             ID_EX_Funct3 <= 3'b0;
             ID_EX_enable_out <= 1'b0;
+        end else if (hazard_stall == 2'b01 ) begin
+                // If stall is detected in EX stage, let EX stage go on;
+                // Insert bubble (NOP) into the pipeline
+                ID_EX_PC <= 32'b0;           // Set PC to 0
+                ID_EX_ReadData1 <= 32'b0;
+                ID_EX_ReadData2 <= 32'b0;
+                ID_EX_Immediate <= 32'b0;
+                ID_EX_Rs1 <= 5'b0;
+                ID_EX_Rs2 <= 5'b0;
+                ID_EX_Rd <= 5'b0;
+                ID_EX_Funct7 <= 7'b0;
+                ID_EX_Funct3 <= 3'b0;
+                ID_EX_enable_out <= 1'b1;
+        end else if(hazard_stall == 2'b10) begin
+                // If stall is detected in MEM stage, stall ex stage
+                // Stall the pipeline (hold current state)
+                ID_EX_enable_out <= 1'b0;
+
         end else if (IF_ID_enable_out) begin
             // Decode instruction
             ID_EX_PC <= IF_ID_PC;
+            IF_ID_jump_branch_taken <= IF_ID_jump_branch_taken;
+            
             ID_EX_ReadData1 <= ID_EX_ReadData1_out;
             ID_EX_ReadData2 <= ID_EX_ReadData2_out;
             ID_EX_Immediate <= Immediate;
@@ -147,9 +153,9 @@ module ID_stage (
             ID_EX_Rd <= IF_ID_Instruction[11:7];
             ID_EX_Funct7 <= IF_ID_Instruction[31:25];
             ID_EX_Funct3 <= IF_ID_Instruction[14:12];
-            ID_EX_enable_out <= 1'b1; // Enable decoding for the next stage
+            ID_EX_enable_out <= 1'b1; // Enable for the next stage
         end else begin
-            ID_EX_enable_out <= 1'b0; // Disable decoding
+            ID_EX_enable_out <= 1'b0; // stall next stage
         end
     end
 
