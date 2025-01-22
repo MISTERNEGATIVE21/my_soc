@@ -32,7 +32,7 @@ module BranchPredictionUnit (
     always @(*) begin
         case (state)
             STRONGLY_NOT_TAKEN, WEAKLY_NOT_TAKEN: prediction = 0;
-            WEAKLY_TAKEN, STRONGLY_TAKEN: prediction = 1;
+            WEAKLY_TAKEN, STRONGLY_TAKEN:   prediction = 1;
         endcase
     end
 endmodule

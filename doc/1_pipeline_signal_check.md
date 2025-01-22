@@ -4,9 +4,10 @@
 |-|----|----|----|----|----|----|--|
 |1|PC|S|T|T|M|T||
 |2|Instruction|S|D|-|-|-||
+|2|branch-taken|S|T|D|-|-|indicate branch is taken|
 |3|opcode|-|S/D|-|-|-||
-|4|readdate1|-|S|D|-|-|rs1-read-value|
-|5|readdate2|-|S|D|-|-|rs2-read-value|
+|4|readdata1|-|S|D|-|-|rs1-read-value|
+|5|readdata2|-|S|D|-|-|rs2-read-value|
 |6|imm|-|S|D|-|-||
 |10|fun7|-|S|D|-|-||
 |11|fun3|-|S|D|-|-||

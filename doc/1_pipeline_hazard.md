@@ -22,11 +22,20 @@ Reordering Instructions: Changing the order of instructions to avoid the hazard.
 
 ## 1.1. forward
 
-detect
-handle : add mux input for alu-A & alu-b
+detect : rd (EX_MEM_rd or MEM_WB_rd) is the src of ALU-A or ALU-B 
+handle : add mux before ALU-A & ALU-B, get a forward path from  EX_MEM_rd or MEM_WB_rd
 
 ## 1.2. stall
 In a pipelined processor, when a stall is detected in the EX stage (or any other stage), you generally need to stall the pipeline stages before (**upstream**) the stage where the hazard is detected. The stages after (**downstream**) the detected hazard should continue executing normally.
+
+**stall-src**:
+- hazard_stall (data-path)
+  - stall upstream stage, let downstream stage go; 
+- i-cache-miss, 
+    - just wait until I-valid, no need to stall 
+- d-cache-miss, 
+    - stall if/if/ex stage until D-valid
+- debug, halt for step or breakpoint 
 
 ### 1.2.1. if stall detect in ex stage:
 IF/ID Stage:
@@ -68,8 +77,9 @@ These hazards can be resolved using various techniques such as stalling, branch 
     Helps in quickly determining the next instruction to fetch if a branch is predicted taken.
     Implementing Control Hazard Handling
 
-## 2.1. branch & jump & flush
+## 2.1. branch or jump prediction & flush
 
+### 2.1.1. total solution
 ```mermaid
 flowchart TD;
     A(jump) --> B((flush))
@@ -80,6 +90,37 @@ flowchart TD;
     E --> E1([correct]) & E2([not-correct])
 
     D1 --> B
+    E2 --> B
+```
+
+### 2.1.2. no prediction
+
+```mermaid
+flowchart TD;
+    A(jump) --> B((flush))
+    C(branch) --> D([no-prediction])
+    D --> D1([taken]) & D2([not-taken])
+    D1 --> B
+```
+
+### 2.1.3. add prediction to branch
+
+```mermaid
+flowchart TD;
+    A(jump) --> B((flush))
+    C(branch) --> E([has-prediction])
+    E --> E1([correct]) & E2([not-correct])
+    E2 --> B
+```
+
+### 2.1.4. add prediction to jump too;
+
+```mermaid
+flowchart TD;
+    A(jump) --> E1
+    B((flush))
+    C(branch) --> E([has-prediction])
+    E --> E1([correct]) & E2([not-correct])
     E2 --> B
 ```
 
@@ -94,9 +135,60 @@ flowchart TD;
 
 具体实现步骤
 在 IF 阶段进行分支预测并获取指令：
+
 使用分支预测器预测分支是否被采取。
 如果预测分支被采取，则 PC 设置为预测的目标地址。否则，PC 继续按顺序增加。
 
 在 EX 阶段计算实际的分支目标地址并验证预测：
 计算实际的分支目标地址。
 比较分支预测结果和实际结果。如果不一致，则刷新流水线并更新 PC。
+
+### 2.1.5. BranchPredictionUnit： 
+- 没有，也不影响正常流程；仅仅是提高了预测的正确性
+- 独立工作，给出预测输出/接受预测正确与否的反馈
+- 原理： 概率的马尔科夫链
+
+```mermaid
+flowchart LR;
+    A((StrongNotTaken))
+    B((WeakNotTaken  ))
+    C((WeakTaken     ))
+    D((StrongTaken   ))
+    A -->|taken|B-->|taken|C -->|taken|D
+    D -.->|notaken|C -.->|notaken|B -.->|notaken|A
+```
+
+
+
+## 2.2. update for PCs (prediction to both jump & branch)
+
+### 2.2.1. if-stage
+**pc** : internal signal of if stage
+
+$$
+pc = 
+\begin{cases}
+\ 0, & reset \\
+\ pc + 4, &normal-inst &or &branch-predict-not-taken\\
+\ pc + immd, &branch(predict-taken)\\
+\ immd, & jump(always-taken) \\
+\ next\_pc, & flush
+\end{cases}
+$$
+
+### 2.2.2. ex-stage:
+**next_pc**: output for re-set the pc after flush.
+$$
+next\_pc = 
+\begin{cases}
+\ 0, & reset \\
+\ ID\_EX\_PC + 4, & IF\_ID\_branch\_taken==1 &but,  &branch\_teken == 0\\
+\ ID\_EX\_PC + ID\_EX\_immd, &IF\_ID\_branch\_taken==0 &but,  &branch\_teken == 1\\
+\end{cases}
+$$
+
+### 2.2.3. Q/A
+> is next_pc need to transfer to mem or wb stage ?
+> i think no;
+
+
