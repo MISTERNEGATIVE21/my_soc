@@ -17,18 +17,18 @@ If execute_enable is part of a more complex control logic that takes into accoun
 */
 
 module EX_stage (
-    //system signals
+    // System signals
     input wire clk,                      // Clock input
     input wire reset_n,                  // Asynchronous reset (active low)
 
-    //global stall signal
+    // Global stall signal
     input wire [1:0] hazard_stall,       // Hazard stall signal
 
-    //enable signals from previous stage
+    // Enable signals from previous stage
     input wire ID_EX_enable_out,         // Input from ID stage, indicating enable
-    input wire ID_EX_jump_branch_taken,       // Input from ID/EX pipeline register,  indicating branch or jump taken  
+    input wire ID_EX_jump_branch_taken,  // Input from ID/EX pipeline register, indicating branch or jump taken  
     
-    //from previous stage
+    // Inputs from previous stage
     input wire [31:0] ID_EX_PC,          // Input from ID/EX pipeline register, Program Counter
     input wire [31:0] ID_EX_ReadData1,   // Input from ID/EX pipeline register, Read Data 1
     input wire [31:0] ID_EX_ReadData2,   // Input from ID/EX pipeline register, Read Data 2
@@ -37,27 +37,26 @@ module EX_stage (
     input wire [6:0] ID_EX_Funct7,       // Input from ID/EX pipeline register, funct7 field
     input wire [2:0] ID_EX_Funct3,       // Input from ID/EX pipeline register, funct3 field
 
-    //from control unit
+    // Inputs from control unit
     input wire ID_EX_ALUSrc,             // Output from ControlUnit, ALU source control signal
     input wire [1:0] ID_EX_ALUOp,        // Input from ControlUnit, ALU operation control signal
     input wire ID_EX_Branch,             // Output from ControlUnit, Branch control signal
-    input wire ID_EX_jump,               // Output from ControlUnit, Jump control signal
+    input wire ID_EX_Jump,               // Output from ControlUnit, Jump control signal
     input wire ID_EX_MemRead,            // Output from ControlUnit, Memory read control signal
     input wire ID_EX_MemWrite,           // Output from ControlUnit, Memory write control signal
     input wire ID_EX_MemToReg,           // Output from ControlUnit, Memory to register control signal
     input wire ID_EX_RegWrite,           // Output from ControlUnit, Register write control signal
 
-    //forwarding signals
+    // Forwarding signals
     input wire [1:0] hazard_forwardA,    // Forwarding control for ReadData1
     input wire [1:0] hazard_forwardB,    // Forwarding control for ReadData2
     input wire [31:0] EX_MEM_ALUResult,  // Data forwarded from EX/MEM stage
     input wire [31:0] MEM_WB_ALUResult,  // Data forwarded from MEM/WB stage
 
     // Branch prediction signals
-    input wire branch_prediction,      // Prediction from BPU
-    input wire [31:0] predicted_target, // Predicted branch target address
+    input wire branch_prediction,        // Prediction from BPU
     
-    //output
+    // Outputs to next stage
     output reg [31:0] EX_MEM_PC,         // Output to EX/MEM pipeline register, Program Counter
     output reg [31:0] EX_MEM_ALUResult,  // Output to EX/MEM pipeline register, ALU result
     output reg [31:0] EX_MEM_WriteData,  // Output to EX/MEM pipeline register, Write Data
@@ -67,14 +66,14 @@ module EX_stage (
     output reg EX_MEM_MemToReg,          // Output to EX/MEM pipeline register, Memory to register control signal
     output reg EX_MEM_RegWrite,          // Output to EX/MEM pipeline register, Register write control signal
 
-    //enable signal to next stage
+    // Enable signal to next stage
     output reg EX_MEM_enable_out,        // Output to EX/MEM pipeline register, indicating enable
 
     // Branch signals
-    output reg EX_branch_inst,             // indicate branch instruction, to branch predictor
-    output reg EX_branch_taken,             // indicate branch is real taken, to branch predictor
-    output reg EX_branch_mispredict         // indicate branch is mispredicted, to branch predictor
-    output reg [31:0] EX_next_pc,            // Next program counter value after flush to IF stage 
+    output reg EX_branch_inst,           // Indicate branch instruction, to branch predictor
+    output reg EX_branch_taken,          // Indicate branch is really taken, to branch predictor
+    output reg EX_branch_mispredict,     // Indicate branch is mispredicted, to branch predictor
+    output reg [31:0] EX_next_pc         // Next program counter value after flush to IF stage 
 );
 
     wire [3:0] ALUControl;        // ALU control signal
@@ -83,6 +82,7 @@ module EX_stage (
     wire [31:0] ALUInput1;        // ALU first input
     wire [31:0] ALUInput2;        // ALU second input
     reg [31:0] branch_target;
+
     // ALU control unit
     ALUControlUnit alu_control (
         .clk(clk),
@@ -127,10 +127,10 @@ module EX_stage (
             EX_MEM_MemWrite <= 1'b0;
             EX_MEM_MemToReg <= 1'b0;
             EX_MEM_enable_out <= 1'b0;
-            EX_clear_IF_ID <= 1'b0;
             EX_branch_inst <= 1'b0;
             EX_branch_taken <= 1'b0;
             EX_branch_mispredict <= 1'b0;
+            EX_next_pc <= 32'b0;
         end else if (hazard_stall == 2'b10) begin
             // If stall is detected in MEM stage, let MEM stage go on; else, stall it
             // Insert bubble (NOP) into the pipeline
@@ -156,11 +156,11 @@ module EX_stage (
                 // Branch instruction
                 EX_branch_inst <= 1'b1; // Branch instruction
                 if (Zero) begin
-                    EX_branch_taken <= 1'b1;// Branch taken
+                    EX_branch_taken <= 1'b1; // Branch taken
                     // Check for misprediction
                     if (ID_EX_jump_branch_taken != EX_branch_taken) begin
                         EX_branch_mispredict <= 1'b1;
-                        EX_next_pc = ID_EX_PC + 4; // Next PC value for flush condition
+                        EX_next_pc <= ID_EX_PC + 4; // Next PC value for flush condition
                     end else begin
                         EX_branch_mispredict <= 1'b0;
                     end
@@ -169,7 +169,7 @@ module EX_stage (
                     // Check for misprediction
                     if (ID_EX_jump_branch_taken != EX_branch_taken) begin
                         EX_branch_mispredict <= 1'b1;
-                        EX_next_pc = ID_EX_PC + ID_EX_Immediate; // Next PC value for flush condition
+                        EX_next_pc <= ID_EX_PC + ID_EX_Immediate; // Next PC value for flush condition
                     end else begin
                         EX_branch_mispredict <= 1'b0;
                     end
@@ -178,8 +178,10 @@ module EX_stage (
                 EX_branch_inst <= 1'b0;
                 EX_branch_taken <= 1'b0;
                 EX_branch_mispredict <= 1'b0;
+                EX_next_pc <= 32'b0;
             end
-            
+
+            EX_MEM_PC <= ID_EX_PC;
             EX_MEM_ALUResult <= ALUResult;
             EX_MEM_WriteData <= ID_EX_ReadData2;
             EX_MEM_Rd <= ID_EX_Rd;
@@ -193,6 +195,7 @@ module EX_stage (
             EX_branch_inst <= 1'b0;
             EX_branch_taken <= 1'b0;
             EX_branch_mispredict <= 1'b0;
+            EX_next_pc <= 32'b0;
         end
     end
 

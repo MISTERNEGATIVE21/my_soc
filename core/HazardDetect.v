@@ -30,10 +30,10 @@ module HazardDetectionUnit (
     input wire MEM_WB_RegWrite,    // Register write signal from MEM/WB stage
     input wire branch_taken,       // Signal indicating if a branch is taken
     input wire branch_mispredict,  // Signal indicating if a branch was mispredicted
-    output reg [1:0] hazard_stall, // Signal to stall the pipeline (0: no stall, 1: EX stage stall, 2: MEM stage stall)
-    output reg hazard_flush,       // Signal to flush the pipeline
     output reg [1:0] hazard_forwardA, // Forwarding control for Rs1
     output reg [1:0] hazard_forwardB  // Forwarding control for Rs2
+    output reg [1:0] hazard_stall, // Signal to stall the pipeline (0: no stall, 1: EX stage stall, 2: MEM stage stall)
+    output reg hazard_flush,       // Signal to flush the pipeline
 );
 
     always @(posedge clk or negedge reset_n) begin
