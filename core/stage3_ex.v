@@ -67,14 +67,13 @@ module EX_stage (
     output reg EX_MEM_MemToReg,          // Output to EX/MEM pipeline register, Memory to register control signal
     output reg EX_MEM_RegWrite,          // Output to EX/MEM pipeline register, Register write control signal
 
-    // Enable signal to next stage
-    output reg EX_MEM_enable_out,        // Output to EX/MEM pipeline register, indicating enable
-
     // Branch signals
-    output reg EX_branch_inst,           // Indicate branch instruction, to branch predictor
     output reg EX_branch_taken,          // Indicate branch is really taken, to branch predictor
     output reg EX_branch_mispredict,     // Indicate branch is mispredicted, to hazard 
     output reg [31:0] EX_next_pc         // Next program counter value after flush to IF stage 
+    
+    // Enable signal to next stage
+    output reg EX_MEM_enable_out,        // Output to EX/MEM pipeline register, indicating enable
 );
 
     wire [3:0] ALUControl;        // ALU control signal
@@ -128,7 +127,6 @@ module EX_stage (
             EX_MEM_MemWrite <= 1'b0;
             EX_MEM_MemToReg <= 1'b0;
             EX_MEM_enable_out <= 1'b0;
-            EX_branch_inst <= 1'b0;
             EX_branch_taken <= 1'b0;
             EX_branch_mispredict <= 1'b0;
             EX_next_pc <= 32'b0;
@@ -142,7 +140,6 @@ module EX_stage (
             EX_MEM_MemRead <= 1'b0;
             EX_MEM_MemWrite <= 1'b0;
             EX_MEM_MemToReg <= 1'b0;
-            EX_branch_inst <= 1'b0;
             EX_branch_taken <= 1'b0;
             EX_branch_mispredict <= 1'b0;
             EX_next_pc <= 32'b0;        
@@ -157,7 +154,6 @@ module EX_stage (
                 EX_branch_mispredict <= 1'b0; // No misprediction check needed for jump
             end else if (ID_EX_Branch) begin
                 // Branch instruction
-                EX_branch_inst <= 1'b1; // Branch instruction
                 if (Zero) begin
                     EX_branch_taken <= 1'b1;    // Branch taken
                     // Check for misprediction
@@ -180,7 +176,6 @@ module EX_stage (
                     end
                 end
             end else begin  // Normal operation
-                EX_branch_inst <= 1'b0;
                 EX_branch_taken <= 1'b0;
                 EX_branch_mispredict <= 1'b0;
                 EX_next_pc <= 32'b0;
@@ -197,7 +192,6 @@ module EX_stage (
             EX_MEM_enable_out <= 1'b1; // Enable next stage
         end else begin
             EX_MEM_enable_out <= 1'b0; // Disable next stage
-            EX_branch_inst <= 1'b0;
             EX_branch_taken <= 1'b0;
             EX_branch_mispredict <= 1'b0;
             EX_next_pc <= 32'b0;

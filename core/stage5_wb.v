@@ -7,6 +7,9 @@ module WB_stage (
     input wire hazard_stall,      // Hazard stall signal
     input wire hazard_flush,      // Hazard flush signal
     
+    // Enable signal from previous stage
+    input wire MEM_WB_enable_out, // Enable signal from MEM stage
+
     // Input from previous stage
     input wire [31:0] MEM_WB_PC,  // Program counter from MEM stage
     input wire [31:0] MEM_WB_ReadData, // Read data from MEM stage
@@ -15,9 +18,6 @@ module WB_stage (
     input wire MEM_WB_RegWrite,   // Register write enable from MEM stage
     input wire MEM_WB_MemToReg,   // Memory to register signal from MEM stage
     
-    // Enable signal from previous stage
-    input wire MEM_WB_enable_out, // Enable signal from MEM stage
-
     // Output to next stage
     output reg WB_RegWrite,       // Register write enable to register file
     output reg [31:0] WB_WriteData, // Write data to register file
