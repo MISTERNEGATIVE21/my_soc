@@ -1,6 +1,5 @@
 `include "../common.vh"
 
-
 module AHB_ROM_Slave #(
     parameter BASE_ADDR = 32'h0000_0000, // Default base address
     parameter SIZE = 8192 // Default size is 8192 words (32KB)

@@ -1,6 +1,9 @@
 /* 
  fetch inst from i_memory
 */
+
+`include "../common.vh"
+
 module IF_stage (
     // System signals
     input wire clk,               // Clock signal
@@ -30,6 +33,7 @@ module IF_stage (
     i_memory #(
         .ADDR_WIDTH(32),
         .DATA_WIDTH(32),
+        .BASE_ADDR(`I_MEM_START_ADDR)
         .MEM_DEPTH(1024)
     ) i_memory_inst (
         .clk(clk),

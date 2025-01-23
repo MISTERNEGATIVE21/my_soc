@@ -1,7 +1,8 @@
 module i_memory #(
     parameter ADDR_WIDTH = 32,
     parameter DATA_WIDTH = 32,
-    parameter MEM_DEPTH = 1024
+    parameter BASE_ADDR = 32'h00000000  // Base address parameter
+    parameter MEM_DEPTH = 1024,
 )(
     input wire clk,
     input wire reset_n,
@@ -25,7 +26,11 @@ module i_memory #(
         if (~reset_n) begin
             rdata <= 0;
         end else begin
-            rdata <= memory[addr >> 2]; // Assuming word-aligned addresses
+            if (addr >= BASE_ADDR && addr < BASE_ADDR + (MEM_DEPTH << 2)) begin
+                rdata <= memory[(addr - BASE_ADDR) >> 2]; // Assuming word-aligned addresses
+            end else begin
+                rdata <= 32'b0; // Output zero if address is out of range
+            end
         end
     end
 

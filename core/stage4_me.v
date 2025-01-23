@@ -1,3 +1,5 @@
+`include "../common.vh"
+
 module MEM_stage (
     // System signals
     input wire clk,               // 时钟信号
@@ -40,6 +42,7 @@ module MEM_stage (
     d_memory #(
         .ADDR_WIDTH(32),
         .DATA_WIDTH(32),
+        .BASE_ADDR(`D_MEM_START_ADDR),
         .MEM_DEPTH(1024)
     ) d_memory_inst (
         .clk(clk),

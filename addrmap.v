@@ -2,6 +2,13 @@
 `define ADDRMAP_V
 
 // Address Map Definitions
+// i-memory Module
+`define I_MEM_START_ADDR      32'h0000_0000
+`define I_MEM_SIZE            32'h0000_8000  // 32 KB
+
+// d-memory Module
+`define D_MEM_START_ADDR     32'h0001_0000
+`define D_MEM_SIZE           32'h0001_0000  // 64 KB
 
 // ROM Module
 `define ROM_START_ADDR      32'h0000_0000
