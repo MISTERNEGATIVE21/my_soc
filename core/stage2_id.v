@@ -101,24 +101,17 @@ module ID_stage (
             ID_EX_enable_out <= 1'b0;
         end else if (hazard_flush) begin
             // Clear IF/ID stage
-            ID_EX_PC <= 32'b0;
-            ID_EX_Immediate <= 32'b0;
-            ID_EX_Rs1 <= 5'b0;
-            ID_EX_Rs2 <= 5'b0;
-            ID_EX_Rd <= 5'b0;
-            ID_EX_Funct7 <= 7'b0;
-            ID_EX_Funct3 <= 3'b0;
-            ID_EX_enable_out <= 1'b0;
+            ID_EX_PC <= 32'b0;           // Clear Program Counter
+            ID_EX_Immediate <= 32'b0;    // Clear Immediate value
+            ID_EX_Rs1 <= 5'b0;           // Clear source register 1
+            ID_EX_Rs2 <= 5'b0;           // Clear source register 2
+            ID_EX_Rd <= 5'b0;            // Clear destination register
+            ID_EX_Funct7 <= 7'b0;        // Clear funct7 field
+            ID_EX_Funct3 <= 3'b0;        // Clear funct3 field
+            ID_EX_enable_out <= 1'b0;    // Disable the next stage
         end else if (hazard_stall) begin
-            // Insert bubble (NOP) into the pipeline
-            ID_EX_PC <= 32'b0;
-            ID_EX_Immediate <= 32'b0;
-            ID_EX_Rs1 <= 5'b0;
-            ID_EX_Rs2 <= 5'b0;
-            ID_EX_Rd <= 5'b0;
-            ID_EX_Funct7 <= 7'b0;
-            ID_EX_Funct3 <= 3'b0;
-            ID_EX_enable_out <= 1'b0;
+            // keep the current state of the pipeline
+            ID_EX_enable_out <= 1'b0;    // Disable the next stage
         end else if (IF_ID_enable_out) begin
             // Decode instruction
             ID_EX_PC <= IF_ID_PC;
@@ -129,9 +122,9 @@ module ID_stage (
             ID_EX_Rd <= IF_ID_Instruction[11:7];
             ID_EX_Funct7 <= IF_ID_Instruction[31:25];
             ID_EX_Funct3 <= IF_ID_Instruction[14:12];
-            ID_EX_enable_out <= 1'b1;
+            ID_EX_enable_out <= 1'b1;    // Enable for the next stage
         end else begin
-            ID_EX_enable_out <= 1'b0; // Stall next stage
+            ID_EX_enable_out <= 1'b0;    // Stall next stage
         end
     end
 

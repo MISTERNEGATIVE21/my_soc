@@ -142,26 +142,14 @@ module EX_stage (
             EX_MEM_MemRead <= 1'b0;
             EX_MEM_MemWrite <= 1'b0;
             EX_MEM_MemToReg <= 1'b0;
-            EX_MEM_enable_out <= 1'b0;
             EX_branch_inst <= 1'b0;
             EX_branch_taken <= 1'b0;
             EX_branch_mispredict <= 1'b0;
             EX_next_pc <= 32'b0;        
+            EX_MEM_enable_out <= 1'b0;
         end else if (hazard_stall) begin
-            // Insert bubble (NOP) into the pipeline
-            EX_MEM_PC <= 32'b0;
-            EX_MEM_ALUResult <= 32'b0;
-            EX_MEM_WriteData <= 32'b0;
-            EX_MEM_Rd <= 5'b0;
-            EX_MEM_RegWrite <= 1'b0;
-            EX_MEM_MemRead <= 1'b0;
-            EX_MEM_MemWrite <= 1'b0;
-            EX_MEM_MemToReg <= 1'b0;
-            EX_MEM_enable_out <= 1'b0;
-            EX_branch_inst <= 1'b0;
-            EX_branch_taken <= 1'b0;
-            EX_branch_mispredict <= 1'b0;
-            EX_next_pc <= 32'b0;        
+            // stall the pipeline, hold the current state
+            EX_MEM_enable_out <= 1'b0;  // Disable next stage
         end else if (ID_EX_enable_out) begin
             if (ID_EX_Jump) begin
                 // Jump always taken

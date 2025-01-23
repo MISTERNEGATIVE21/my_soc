@@ -62,10 +62,8 @@ module IF_stage (
             IF_ID_jump_branch_taken <= 1'b0;
             IF_ID_enable_out <= 1'b0;
         end else if (hazard_stall) begin
-            // Stall the pipeline (hold current state)
-            IF_ID_Instruction <= 32'h00000013;  // Insert NOP instruction to stall
-            IF_ID_jump_branch_taken <= 1'b0;
-            IF_ID_enable_out <= 1'b0;           // Disable the output to the next stage
+            // Do nothing, stall the pipeline, keep the current instruction
+            IF_ID_enable_out <= 1'b0;           // clear the enable to the next stage
         end else if (fetch_enable) begin
             // Fetch the instruction normally
             IF_ID_PC <= pc;
