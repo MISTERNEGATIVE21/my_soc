@@ -4,8 +4,7 @@ module MEM_stage (
     input wire reset_n,           // 异步复位信号（低电平有效）
     
     //global stall signal
-    input wire combined_stall,    // 组合暂停信号
-    input wire [1:0] hazard_stall, // hazard stall signal
+    input wire hazard_stall,        // hazard stall signal
     
     //enable signals from previous stage
     input wire EX_MEM_enable_out, // 来自执行阶段的使能信号
@@ -63,26 +62,17 @@ module MEM_stage (
             MEM_WB_enable_out <= 1'b0;
             d_memory_mem_read <= 1'b0;
             d_memory_mem_write <= 1'b0;
-        end else if (combined_stall) begin
-            // hazard detected on ex or mem stage, not stall mem stage
-            if (hazard_stall == 2'b01 || hazard_stall == 2'b10) begin
-                if (EX_MEM_enable_out) begin
-                    // EX_MEM_enable_out = 1 流水线有效 内存操作
-                    d_memory_mem_read <= EX_MEM_MemRead;
-                    d_memory_mem_write <= EX_MEM_MemWrite;
-                    MEM_WB_ReadData <= EX_MEM_MemRead ? d_memory_rdata : 32'b0;
-                    MEM_WB_ALUResult <= EX_MEM_ALUResult;
-                    MEM_WB_PC <= EX_MEM_PC;
-                    MEM_WB_Rd <= EX_MEM_Rd;
-                    MEM_WB_RegWrite <= EX_MEM_RegWrite;
-                    MEM_WB_MemToReg <= EX_MEM_MemToReg;
-                    MEM_WB_enable_out <= 1'b1;
-                end
-            end else begin  // other case of stall
-                MEM_WB_enable_out <= 1'b0;
-                d_memory_mem_read <= 1'b0;
-                d_memory_mem_write <= 1'b0;
-            end
+        end else if (hazard_stall) begin
+            // 插入流水线空泡
+            d_memory_mem_read <= 0;
+            d_memory_mem_write <= 0;
+            MEM_WB_ReadData <= 0;
+            MEM_WB_ALUResult <= 0;
+            MEM_WB_PC <= 0;
+            MEM_WB_Rd <= 0;
+            MEM_WB_RegWrite <= 0;
+            MEM_WB_MemToReg <= 0;
+            MEM_WB_enable_out <= 1'b1;
         end else if (EX_MEM_enable_out) begin
             // normal case
             d_memory_mem_read <= EX_MEM_MemRead;

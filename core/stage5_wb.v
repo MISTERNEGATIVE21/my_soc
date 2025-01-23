@@ -3,9 +3,6 @@ module WB_stage (
     input wire clk,               // Clock signal
     input wire reset_n,           // Asynchronous reset (active low)
     
-    //Golobal stall signal
-    input wire combined_stall,    // in: Combined stall signal
-    
     //input from previous stage
     input wire [31:0] MEM_WB_PC,  // in: Program counter from MEM stage
     input wire [31:0] MEM_WB_ReadData, // in: Read data from MEM stage
@@ -28,12 +25,6 @@ module WB_stage (
         if (~reset_n) begin
             // 复位逻辑
             WB_RegWrite <= 1'b0;   // 禁用寄存器写入
-            WB_WriteData <= 32'b0;
-            WB_Rd <= 5'b0;
-            WB_PC <= 32'b0;
-        end else if (combined_stall) begin
-            // 在流水线中插入空泡（NOP）
-            WB_RegWrite <= 1'b0;
             WB_WriteData <= 32'b0;
             WB_Rd <= 5'b0;
             WB_PC <= 32'b0;

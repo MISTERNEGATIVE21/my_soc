@@ -21,8 +21,9 @@ module EX_stage (
     input wire clk,                      // Clock input
     input wire reset_n,                  // Asynchronous reset (active low)
 
-    // Global stall signal
-    input wire [1:0] hazard_stall,       // Hazard stall signal
+    // Global stall and flush signals
+    input wire hazard_flush,             // Hazard flush signal
+    input wire hazard_stall,       // Hazard stall signal
 
     // Enable signals from previous stage
     input wire ID_EX_enable_out,         // Input from ID stage, indicating enable
@@ -72,7 +73,7 @@ module EX_stage (
     // Branch signals
     output reg EX_branch_inst,           // Indicate branch instruction, to branch predictor
     output reg EX_branch_taken,          // Indicate branch is really taken, to branch predictor
-    output reg EX_branch_mispredict,     // Indicate branch is mispredicted, to branch predictor
+    output reg EX_branch_mispredict,     // Indicate branch is mispredicted, to hazard 
     output reg [31:0] EX_next_pc         // Next program counter value after flush to IF stage 
 );
 
@@ -131,8 +132,22 @@ module EX_stage (
             EX_branch_taken <= 1'b0;
             EX_branch_mispredict <= 1'b0;
             EX_next_pc <= 32'b0;
-        end else if (hazard_stall == 2'b10) begin
-            // If stall is detected in MEM stage, let MEM stage go on; else, stall it
+        end else if (hazard_flush) begin
+            // Handle hazard flush
+            EX_MEM_PC <= 32'b0;
+            EX_MEM_ALUResult <= 32'b0;
+            EX_MEM_WriteData <= 32'b0;
+            EX_MEM_Rd <= 5'b0;
+            EX_MEM_RegWrite <= 1'b0;
+            EX_MEM_MemRead <= 1'b0;
+            EX_MEM_MemWrite <= 1'b0;
+            EX_MEM_MemToReg <= 1'b0;
+            EX_MEM_enable_out <= 1'b0;
+            EX_branch_inst <= 1'b0;
+            EX_branch_taken <= 1'b0;
+            EX_branch_mispredict <= 1'b0;
+            EX_next_pc <= 32'b0;        
+        end else if (hazard_stall) begin
             // Insert bubble (NOP) into the pipeline
             EX_MEM_PC <= 32'b0;
             EX_MEM_ALUResult <= 32'b0;
@@ -146,7 +161,7 @@ module EX_stage (
             EX_branch_inst <= 1'b0;
             EX_branch_taken <= 1'b0;
             EX_branch_mispredict <= 1'b0;
-            EX_MEM_enable_out <= 1'b1;        
+            EX_next_pc <= 32'b0;        
         end else if (ID_EX_enable_out) begin
             if (ID_EX_Jump) begin
                 // Jump always taken
@@ -156,22 +171,24 @@ module EX_stage (
                 // Branch instruction
                 EX_branch_inst <= 1'b1; // Branch instruction
                 if (Zero) begin
-                    EX_branch_taken <= 1'b1; // Branch taken
+                    EX_branch_taken <= 1'b1;    // Branch taken
                     // Check for misprediction
                     if (ID_EX_jump_branch_taken != EX_branch_taken) begin
                         EX_branch_mispredict <= 1'b1;
-                        EX_next_pc <= ID_EX_PC + 4; // Next PC value for flush condition
+                        EX_next_pc <= ID_EX_PC + ID_EX_Immediate;  // Branch should be taken, but not in prediction, so update next_pc to branch target
                     end else begin
                         EX_branch_mispredict <= 1'b0;
+                        EX_next_pc <= 32'b0; // No misprediction, no need to update EX_next_pc
                     end
                 end else begin
                     EX_branch_taken <= 1'b0; // Branch not taken
                     // Check for misprediction
                     if (ID_EX_jump_branch_taken != EX_branch_taken) begin
                         EX_branch_mispredict <= 1'b1;
-                        EX_next_pc <= ID_EX_PC + ID_EX_Immediate; // Next PC value for flush condition
+                        EX_next_pc <= ID_EX_PC + 4; // Next sequential instruction
                     end else begin
                         EX_branch_mispredict <= 1'b0;
+                        EX_next_pc <= 32'b0; // No misprediction, no need to update EX_next_pc
                     end
                 end
             end else begin  // Normal operation

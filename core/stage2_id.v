@@ -28,54 +28,45 @@ and ease of understanding for the entire pipeline's flow of control signals. Thi
 */
 
 module ID_stage (
-    //input -----------------------------------------------------------------
-    //system signals
-    input wire clk,                    // Clock input
-    input wire reset_n,                // Asynchronous reset (active low)
+    // System signals
+    input wire clk,
+    input wire reset_n,
 
-    //global stall signal
-    input wire [1:0] hazard_stall,     // Hazard stall signal
-    input wire hazard_flush,           // Hazard flush, clear IF/ID stage
+    // Global stall signal
+    input wire hazard_flush,
+    input wire hazard_stall,
 
-    //from previous stage
-    input wire IF_ID_jump_branch_taken,// Input from IF/ID pipeline register, indicating branch or jump taken 
+    // From previous stage
+    input wire [31:0] IF_ID_PC,
+    input wire [31:0] IF_ID_Instruction,
+    input wire IF_ID_jump_branch_taken,
+    input wire IF_ID_enable_out,
 
-    //from previous stage
-    input wire [31:0] IF_ID_PC,        // Input from IF/ID pipeline register, carrying Program Counter
-    input wire [31:0] IF_ID_Instruction,// Input from IF/ID pipeline register, carrying instruction
+    // Output to next stage
+    output reg [31:0] ID_EX_PC,
+    output reg ID_EX_jump_branch_taken,
+    output reg [31:0] ID_EX_Immediate,
+    output reg [4:0] ID_EX_Rs1,
+    output reg [4:0] ID_EX_Rs2,
+    output reg [4:0] ID_EX_Rd,
+    output reg [6:0] ID_EX_Funct7,
+    output reg [2:0] ID_EX_Funct3,
 
-    input wire IF_ID_enable_out,       // Input from fetch stage, indicating fetch enable
+    // Control unit outputs
+    output wire ID_EX_ALUSrc,
+    output wire [1:0] ID_EX_ALUOp,
+    output wire ID_EX_Branch,
+    output wire ID_EX_Jump,
+    output wire ID_EX_MemRead,
+    output wire ID_EX_MemWrite,
+    output wire ID_EX_MemToReg,
+    output wire ID_EX_RegWrite,
 
-    //output -----------------------------------------------------------------
-    //from previous stage
-    output reg [31:0] ID_EX_PC,        // Output to ID/EX pipeline register, carrying Program Counter
-    output reg IF_ID_jump_branch_taken, // Output to ID/EX pipeline register, carrying Read Data 1
-
-    //from id
-    output reg [31:0] ID_EX_ReadData1, // Output to ID/EX pipeline register, carrying Read Data 1
-    output reg [31:0] ID_EX_ReadData2, // Output to ID/EX pipeline register, carrying Read Data 2
-    output reg [31:0] ID_EX_Immediate, // Output to ID/EX pipeline register, carrying Immediate value
-    output reg [4:0] ID_EX_Rs1,        // Output to ID/EX pipeline register, carrying source register 1
-    output reg [4:0] ID_EX_Rs2,        // Output to ID/EX pipeline register, carrying source register 2
-    output reg [4:0] ID_EX_Rd,         // Output to ID/EX pipeline register, carrying destination register
-    output reg [6:0] ID_EX_Funct7,     // Output to ID/EX pipeline register, carrying funct7 field
-    output reg [2:0] ID_EX_Funct3,     // Output to ID/EX pipeline register, carrying funct3 field
-
-    //from control unit
-    output wire ID_EX_ALUSrc,          // Output from ControlUnit, ALU source control signal
-    output wire [1:0] ID_EX_ALUOp,     // Output from ControlUnit, ALU operation control signal
-    output wire ID_EX_Branch,          // Output from ControlUnit, branch control signal
-    output wire ID_EX_Jump,            // Output from ControlUnit, jump control signal 
-    output wire ID_EX_MemRead,         // Output from ControlUnit, Memory read control signal
-    output wire ID_EX_MemWrite,        // Output from ControlUnit, Memory write control signal
-    output wire ID_EX_MemToReg,        // Output from ControlUnit, Memory to register control signal
-    output wire ID_EX_RegWrite,        // Output from ControlUnit, Register write control signal
-
-    //enable signal to next stage
-    output reg ID_EX_enable_out       // Output to ID/EX pipeline register, indicating enable
+    // Enable signal to next stage
+    output reg ID_EX_enable_out
 );
 
-    wire [31:0] Immediate;  // Wire for Immediate value generated
+    wire [31:0] Immediate;
     wire [6:0] opcode = IF_ID_Instruction[6:0];
 
     // Instantiate ImmediateGenerator
@@ -101,8 +92,6 @@ module ID_stage (
         if (~reset_n) begin
             // Reset all pipeline registers
             ID_EX_PC <= 32'b0;
-            ID_EX_ReadData1 <= 32'b0;
-            ID_EX_ReadData2 <= 32'b0;
             ID_EX_Immediate <= 32'b0;
             ID_EX_Rs1 <= 5'b0;
             ID_EX_Rs2 <= 5'b0;
@@ -113,8 +102,6 @@ module ID_stage (
         end else if (hazard_flush) begin
             // Clear IF/ID stage
             ID_EX_PC <= 32'b0;
-            ID_EX_ReadData1 <= 32'b0;
-            ID_EX_ReadData2 <= 32'b0;
             ID_EX_Immediate <= 32'b0;
             ID_EX_Rs1 <= 5'b0;
             ID_EX_Rs2 <= 5'b0;
@@ -122,40 +109,29 @@ module ID_stage (
             ID_EX_Funct7 <= 7'b0;
             ID_EX_Funct3 <= 3'b0;
             ID_EX_enable_out <= 1'b0;
-        end else if (hazard_stall == 2'b01 ) begin
-                // If stall is detected in EX stage, let EX stage go on;
-                // Insert bubble (NOP) into the pipeline
-                ID_EX_PC <= 32'b0;           // Set PC to 0
-                ID_EX_ReadData1 <= 32'b0;
-                ID_EX_ReadData2 <= 32'b0;
-                ID_EX_Immediate <= 32'b0;
-                ID_EX_Rs1 <= 5'b0;
-                ID_EX_Rs2 <= 5'b0;
-                ID_EX_Rd <= 5'b0;
-                ID_EX_Funct7 <= 7'b0;
-                ID_EX_Funct3 <= 3'b0;
-                ID_EX_enable_out <= 1'b1;
-        end else if(hazard_stall == 2'b10) begin
-                // If stall is detected in MEM stage, stall ex stage
-                // Stall the pipeline (hold current state)
-                ID_EX_enable_out <= 1'b0;
-
+        end else if (hazard_stall) begin
+            // Insert bubble (NOP) into the pipeline
+            ID_EX_PC <= 32'b0;
+            ID_EX_Immediate <= 32'b0;
+            ID_EX_Rs1 <= 5'b0;
+            ID_EX_Rs2 <= 5'b0;
+            ID_EX_Rd <= 5'b0;
+            ID_EX_Funct7 <= 7'b0;
+            ID_EX_Funct3 <= 3'b0;
+            ID_EX_enable_out <= 1'b0;
         end else if (IF_ID_enable_out) begin
             // Decode instruction
             ID_EX_PC <= IF_ID_PC;
-            IF_ID_jump_branch_taken <= IF_ID_jump_branch_taken;
-            
-            ID_EX_ReadData1 <= ID_EX_ReadData1_out;
-            ID_EX_ReadData2 <= ID_EX_ReadData2_out;
+            ID_EX_jump_branch_taken <= IF_ID_jump_branch_taken;
             ID_EX_Immediate <= Immediate;
             ID_EX_Rs1 <= IF_ID_Instruction[19:15];
             ID_EX_Rs2 <= IF_ID_Instruction[24:20];
             ID_EX_Rd <= IF_ID_Instruction[11:7];
             ID_EX_Funct7 <= IF_ID_Instruction[31:25];
             ID_EX_Funct3 <= IF_ID_Instruction[14:12];
-            ID_EX_enable_out <= 1'b1; // Enable for the next stage
+            ID_EX_enable_out <= 1'b1;
         end else begin
-            ID_EX_enable_out <= 1'b0; // stall next stage
+            ID_EX_enable_out <= 1'b0; // Stall next stage
         end
     end
 

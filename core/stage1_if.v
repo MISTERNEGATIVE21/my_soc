@@ -1,4 +1,4 @@
-/* Summary of Changes:
+/* 
  fetch inst from i_memory
 */
 module IF_stage (
@@ -6,25 +6,20 @@ module IF_stage (
     input wire clk,               // Clock signal
     input wire reset_n,           // Asynchronous reset (active low)
     
-    // Global stall signal
-    input wire combined_stall,    // Combined stall signal
-    input wire hazard_flush,      // Branch or jump, clear IF/ID stage
-    input wire [31:0] next_pc,    // Next program counter value for flush
-
     // Enable signals from previous stage
     input wire fetch_enable,      // Fetch enable signal for hazard control
     
     // Branch Prediction Unit output
-    input wire [1:0] hazard_stall,      // hazard stall stage
     input wire hazard_flush,      // Branch or jump, clear IF/ID stage
+    input wire hazard_stall,      // hazard stall stage
     input wire [31:0] next_pc,    // Next program counter value for flush
     input wire branch_prediction, // Branch prediction signal
     
     // Output to next stage
     output reg [31:0] IF_ID_PC,          // Program counter ID stage
     output reg [31:0] IF_ID_Instruction, // Instruction ID stage
-    output reg IF_ID_jump_branch_taken   // Branch or jump taken signal ID stage
-    output reg IF_ID_enable_out,         // Enable signal for the next stage
+    output reg IF_ID_jump_branch_taken,  // Branch or jump taken signal ID stage
+    output reg IF_ID_enable_out          // Enable signal for the next stage
 );
 
     // Internal program counter register
@@ -56,20 +51,21 @@ module IF_stage (
         if (~reset_n) begin
             pc <= 32'b0;
             IF_ID_PC <= 32'b0;
-            IF_ID_Instruction <= 32'b0;
+            IF_ID_Instruction <= 32'h00000013; // NOP instruction
             IF_ID_jump_branch_taken <= 1'b0;
             IF_ID_enable_out <= 1'b0;
         end else if (hazard_flush) begin
-            // Flush condition
-            pc <= next_pc;
-            IF_ID_PC <= 32'b0;
-            IF_ID_Instruction <= 32'b0;
+            // Flush condition  
+            pc <= next_pc;                      // Update the program counter for the next instruction
+            IF_ID_PC <= 32'b0;                  // Clear the program counter for the current instruction
+            IF_ID_Instruction <= 32'h00000013;  // Insert NOP instruction to flush
             IF_ID_jump_branch_taken <= 1'b0;
             IF_ID_enable_out <= 1'b0;
-        end else if (hazard_stall == 2'b00 || hazard_stall == 2'b01) begin
+        end else if (hazard_stall) begin
             // Stall the pipeline (hold current state)
-            IF_ID_enable_out <= 1'b0;
+            IF_ID_Instruction <= 32'h00000013;  // Insert NOP instruction to stall
             IF_ID_jump_branch_taken <= 1'b0;
+            IF_ID_enable_out <= 1'b0;           // Disable the output to the next stage
         end else if (fetch_enable) begin
             // Fetch the instruction normally
             IF_ID_PC <= pc;
