@@ -172,7 +172,11 @@ module DCache #(
                 // Cache hit
                 if (r_w) begin
                     // Write operation
-                    data_array[index][hit_way][offset/4] <= wdata;
+                    // Write data to cache_data SRAM
+                    cache_data.wdata <= wdata;
+                    cache_data.addr <= {index, hit_way};
+                    cache_data.we <= 1;
+
                     if (WRITE_POLICY == "WRITE_THROUGH") begin
                         // Write-through: write to memory immediately
                         write_to_memory(addr, wdata);
@@ -182,7 +186,7 @@ module DCache #(
                     end
                 end else begin
                     // Read operation
-                    rdata <= data_array[index][hit_way][offset/4];
+                    rdata <= data_out;
                 end
 				ready <= 1; // Data is ready if hit
             end else begin

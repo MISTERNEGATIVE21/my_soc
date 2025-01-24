@@ -1,9 +1,9 @@
 module BranchPredictionUnit (
-    input wire clk,
-    input wire reset_n,
-    input wire branch_instruction,
-    input wire branch_outcome, // 1: taken, 0: not taken
-    output reg prediction
+    input wire clk,                  // in: Clock signal
+    input wire reset_n,              // in: Asynchronous reset (active low)
+    input wire branch_instruction,   // in: Signal indicating a branch instruction
+    input wire branch_outcome,       // in: Actual outcome of the branch (1: taken, 0: not taken)
+    output reg prediction            // out: Prediction of whether the branch will be taken (1: taken, 0: not taken)
 );
     reg [1:0] state; // 2-bit saturating counter
 

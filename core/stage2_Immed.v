@@ -43,11 +43,6 @@ module ImmediateGenerator (
 
     // Extract instruction fields
     wire [6:0] opcode = instruction[6:0];
-    wire [4:0] imm_11_7 = instruction[11:7];
-    wire [11:0] imm_31_20 = instruction[31:20];
-    wire [11:0] imm_31_25_11_7 = {instruction[31:25], instruction[11:7]};
-    wire [19:0] imm_31_12 = instruction[31:12];
-    wire [11:0] imm_31_20_7_6 = {instruction[31], instruction[7], instruction[30:25], instruction[11:8]};
 
     always @(posedge clk or negedge reset_n) begin
         if (~reset_n) begin
@@ -56,20 +51,20 @@ module ImmediateGenerator (
         case (opcode)
             7'b0010011, // I-type (ADDI, SLTI, etc.)
             7'b0000011: // Load (LB, LH, LW, etc.)
-                immediate <= {{20{imm_31_20[11]}}, imm_31_20}; // Sign-extend 12-bit immediate
+                    immediate <= {{20{instruction[31]}}, instruction[31:20]}; // Sign-extend 12-bit immediate
 
             7'b0100011: // S-type (Store: SB, SH, SW, etc.)
-                immediate <= {{20{imm_31_25_11_7[11]}}, imm_31_25_11_7}; // Sign-extend 12-bit immediate
+                    immediate <= {{20{instruction[31]}}, instruction[31:25], instruction[11:7]}; // Sign-extend 12-bit immediate
 
             7'b1100011: // B-type (Branch: BEQ, BNE, etc.)
-                immediate <= {{19{imm_31_20_7_6[11]}}, imm_31_20_7_6, 1'b0}; // Sign-extend 13-bit immediate
+                    immediate <= {{19{instruction[31]}}, instruction[31], instruction[7], instruction[30:25], instruction[11:8], 1'b0}; // Sign-extend 13-bit immediate
 
             7'b0110111, // U-type (LUI)
             7'b0010111: // U-type (AUIPC)
-                immediate <= {imm_31_12, 12'b0}; // 20-bit immediate shifted left by 12
+                    immediate <= {instruction[31:12], 12'b0}; // 20-bit immediate shifted left by 12
 
             7'b1101111: // J-type (JAL)
-                immediate <= {{11{imm_31_12[19]}}, imm_31_12[19:12], imm_31_12[20], imm_31_12[30:21], 1'b0}; // Sign-extend 21-bit immediate
+                    immediate <= {{11{instruction[31]}}, instruction[31], instruction[19:12], instruction[20], instruction[30:21], 1'b0}; // Sign-extend 21-bit immediate
 
             default: // Default case
                 immediate <= 32'b0;
