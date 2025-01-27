@@ -47,22 +47,21 @@ you may want to consider alternatives like ModelSim, Vivado, or Verilator.
 有几种免费的工具可以用于 Verilog 代码的仿真和调试，功能上可以与 Vivado 和 ModelSim 相媲美：
 
 Verilator:
-
 描述: Verilator 是一个开源的 Verilog HDL 仿真器，专注于高性能仿真。
 特点: 支持大规模设计的高性能仿真，生成 C++ 或 SystemC 代码进行仿真。
 下载地址: Verilator 官方网站
-Icarus Verilog:
 
+Icarus Verilog:
 描述: Icarus Verilog 是一个开源的 Verilog 编译器和仿真器。
 特点: 支持 Verilog-2005 标准，适用于中小规模设计的仿真。
 下载地址: Icarus Verilog 官方网站
-GTKWave:
 
+GTKWave:
 描述: GTKWave 是一个开源的波形查看器，可以与 Verilator 和 Icarus Verilog 生成的仿真输出一起使用。
 特点: 提供强大的波形查看和调试功能。
 下载地址: GTKWave 官方网站
-GHDL:
 
+GHDL:
 描述: GHDL 是一个开源的 VHDL 仿真器，但也支持部分 Verilog 代码的仿真。
 特点: 支持 VHDL-2008 标准，可以与 GTKWave 结合使用。
 下载地址: GHDL 官方网站

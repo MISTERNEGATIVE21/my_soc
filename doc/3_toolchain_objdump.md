@@ -57,3 +57,48 @@ objdump -d -j .text program.elf
 ```bash
 objdump -d program.elf > program.txt
 ```
+
+# 不用伪指令，不用寄存器别名，方便 inst debug
+
+要确保 objdump 在反汇编时不使用伪指令和寄存器别名（例如 ra, sp 等），你可以结合使用 -M no-aliases 和 -M numeric 选项。-M numeric 选项将寄存器显示为数字，而不是别名。
+
+以下是具体步骤：
+
+步骤 1: 编写汇编代码
+编写一个简单的汇编代码文件，例如 example.s：
+
+Assembly
+.section .text
+.global _start
+
+_start:
+    li x1, 0x10
+步骤 2: 编译汇编代码
+使用 riscv64-unknown-elf-as 将汇编代码编译成目标文件：
+
+sh
+riscv64-unknown-elf-as -o example.o example.s
+步骤 3: 链接目标文件
+使用 riscv64-unknown-elf-ld 将目标文件链接成可执行文件：
+
+sh
+riscv64-unknown-elf-ld -o example example.o
+步骤 4: 生成反汇编文件
+使用 objdump 生成反汇编文件，并禁用伪指令别名和寄存器别名：
+
+sh
+riscv64-unknown-elf-objdump -d -M no-aliases,numeric example > example.txt
+查看生成的反汇编文件
+打开生成的 example.txt 文件，你应该会看到实际的机器指令和数字形式的寄存器名称：
+
+plaintext
+example:     file format elf64-littleriscv
+
+Disassembly of section .text:
+
+0000000000000000 <_start>:
+   0:   01000113                addi    x1, x0, 16
+在这个示例中，li x1, 0x10 被翻译成了 addi x1, x0, 16，并且寄存器名称使用 x1, x0 等数字形式，而不是别名。
+
+总结
+通过使用 objdump 的 -M no-aliases,numeric 选项，你可以生成包含实际寄存器名称和机器指令的反汇编文件，而不是伪指令别名和寄存器别名。这种方法有助于更好地理解和调试汇编代码。
