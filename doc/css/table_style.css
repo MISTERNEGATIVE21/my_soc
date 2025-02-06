@@ -1,0 +1,23 @@
+/* 针对特定表格的样式 */
+#pipeline-signal-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#pipeline-signal-table th, #pipeline-signal-table td {
+    border: 1px solid black;
+    padding: 10px;
+    text-align: left;
+    vertical-align: top;
+    word-wrap: break-word;
+}
+
+/* 设置特定行的行高 */
+#pipeline-signal-table tr:nth-child(3) td {
+    height: 200px; /* 第三行的行高 */
+}
+
+/* 设置特定列的列宽 */
+#pipeline-signal-table td:nth-child(2), #pipeline-signal-table th:nth-child(2) {
+    width: 100px; /* 第二列的列宽 */
+}

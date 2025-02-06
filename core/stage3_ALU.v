@@ -52,6 +52,7 @@ module ALU (
             4'b0111: Result = A >>> B[4:0];   // SRA (Shift Right Arithmetic)
             4'b1000: Result = ($signed(A) < $signed(B)) ? 32'b1 : 32'b0; // SLT (Set Less Than)
             4'b1001: Result = (A < B) ? 32'b1 : 32'b0; // SLTU (Set Less Than Unsigned)
+            4'b1010: Result = B;              // LUI (直接输出 B)
             default: Result = 32'b0;          // Default case
         endcase
     end

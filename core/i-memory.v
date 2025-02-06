@@ -11,12 +11,12 @@ module i_memory #(
 );
 
     // Memory array
-    reg [DATA_WIDTH-1:0] memory [0:MEM_DEPTH-1];
+    reg [7:0] memory [0:DATA_WIDTH*MEM_DEPTH/8-1];
 
     // Initialize memory (optional)
     initial begin
         integer i;
-        for (i = 0; i < MEM_DEPTH; i = i + 1) begin
+        for (i = 0; i < DATA_WIDTH*MEM_DEPTH/8; i = i + 1) begin
             memory[i] = 0;
         end
     end

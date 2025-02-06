@@ -1,35 +1,56 @@
-# toolchain
+# 1. toolchain select
+如果系统是win, 则有如下3个工具可供选择：
 
+- Cygwin
+提供完整的 Unix API 层，允许编译和运行许多 Unix 应用程序。
+需要手动安装和配置包，灵活性高，但配置复杂。
+适合有经验并希望自定义环境的用户。
+
+- Babun
+基于 Cygwin，提供用户友好的预配置环境。
+包含常用插件和自动更新功能，适合快速上手。
+适合不想进行复杂配置的用户。
+
+- MSYS2
+基于 Cygwin 和 MinGW，提供类似 Unix 的开发环境。
+使用 Pacman 包管理器，方便安装和管理软件包。
+提供强大的 shell 和工具，兼容性好。
+适合需要稳定、灵活和易于管理环境的用户。
+
+**推荐**
+综合考虑，MSYS2 是一个较好的选择。它不仅提供了强大的 Unix 类环境，还支持使用 Pacman 包管理器进行包管理，方便安装调试所需的工具。
+
+# 2. install
 Q:
 how do i install riscv32-unknown-elf-as since i worked in a win10 pc
 
 A:
 To install the riscv32-unknown-elf toolchain on Windows 10, you can follow these steps:
 
-## 1. Step 1: Install MSYS2
+## 2.1. Step 1: Install MSYS2
 Download MSYS2:
 Go to the MSYS2 website and download the installer for Windows.
 
 Install MSYS2:
 Run the installer and follow the instructions to complete the installation.
 
-## 2. Step 2: Install the RISC-V Toolchain
+## 2.2. Step 2: Install the RISC-V Toolchain
 Open MSYS2:
 Open the MSYS2 terminal from the Start menu.
-Update Package Database and Base Packages:
 
+**Update** Package Database and Base Packages
 Run the following commands to update the package database and base packages:
 ```sh
 pacman -Syu
 ```
 
-Install the RISC-V Toolchain:
+**Install** the RISC-V Toolchain:
 Run the following command to install the RISC-V GCC toolchain:
 ```sh
 pacman -S mingw-w64-x86_64-riscv32-unknown-elf-gcc
 ```
 
-## 3. Step 3: Add the Toolchain to Your PATH
+## 2.3. Step 3: Add the Toolchain to Your PATH
 Locate the Installation Directory:
 The toolchain is typically installed in the C:\msys64\mingw64\bin directory.
 
@@ -47,7 +68,7 @@ Open a new Command Prompt or PowerShell window and run the following command to 
 riscv32-unknown-elf-gcc --version
 ```
 
-## 4. Step 4: Use the Toolchain in VS Code
+## 2.4. Step 4: Use the Toolchain in VS Code
 Install the C/C++ Extension:
 
 Open Visual Studio Code.
@@ -119,7 +140,7 @@ JSON
 Public code references from 6 repositories
 By following these steps, you should be able to install and configure the riscv32-unknown-elf toolchain on your Windows 10 PC and use it with Visual Studio Code.
 
-# 
+# 3. 
 Q:
 介绍一下 MSYS2
 
@@ -135,7 +156,7 @@ MSYS2 是一个软件发行版，旨在为 Windows 提供一个类似于 Unix �
 
 安装 MSYS2 后，你可以使用它来编译和运行各种开源软件，或者开发自己的项目。
 
-# 
+# 4. 
 
 Q:
 MSYS2 是否有离线更新包？
@@ -147,10 +168,9 @@ MSYS2 支持离线更新。你可以从 MSYS2 的官方镜像站点下载所需�
 2. 将下载的包文件复制到 MSYS2 环境中的某个目录。
 3. 打开 MSYS2 shell，使用 `pacman -U /path/to/package` 命令安装下载的包文件。
 
-## 搜索包
+## 4.1. 搜索包
 
-
-# update offline
+# 5. update offline
 
 Q:
 can i update in a off-line evn ?

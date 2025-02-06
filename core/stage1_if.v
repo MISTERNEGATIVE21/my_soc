@@ -45,8 +45,6 @@ module IF_stage (
     // Instantiate ImmediateGenerator generate immediate from inst to determine branch/jump target address
     wire [31:0] immediate;
     ImmediateGenerator imm_gen (
-        .clk(clk),
-        .reset_n(reset_n),
         .instruction(i_memory_rdata),
         .immediate(immediate)
     );

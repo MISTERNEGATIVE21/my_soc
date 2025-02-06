@@ -50,6 +50,8 @@ module RegisterFile (
         if (RegWrite && rd != 0) begin
             regfile[rd] <= WriteData;
         end
+        // 强制将 x0 设置为 0
+        regfile[0] <= 32'b0;
     end
 
 endmodule

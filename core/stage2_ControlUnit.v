@@ -29,155 +29,87 @@ This control unit will generate the appropriate control signals based on the opc
 */
 
 module ControlUnit (
-    input wire clk,          // Clock signal
-    input wire reset_n,      // Active-low reset signal
-    input [6:0] opcode,      // Opcode input
-    output reg ALUSrc,       // ALU source control signal, to ex-stage, alu
-    output reg [1:0] ALUOp,  // ALU operation control signal, to ex-stage, alu
-    output reg Branch,       // Branch control signal, to ex-stage, branch
-    output reg Jump,         // Jump control signal, to ex-stage, branch
-    output reg MemRead,      // Memory read control signal, to mem-stage, read  
-    output reg MemWrite,     // Memory write control signal, to mem-stage, write
-    output reg MemtoReg,     // Memory to register control signal, to wb-stage, write-source select
-    output reg RegWrite      // Register write control signal, to wb-stage, write-enable
+    input wire [6:0] opcode,      // Opcode input
+    output reg ALUSrc,            // ALU source control signal, to ex-stage, alu
+    output reg [1:0] ALUOp,       // ALU operation control signal, to ex-stage, alu
+    output reg Branch,            // Branch control signal, to ex-stage, branch
+    output reg Jump,              // Jump control signal, to ex-stage, branch
+    output reg MemRead,           // Memory read control signal, to mem-stage, read  
+    output reg MemWrite,          // Memory write control signal, to mem-stage, write
+    output reg MemtoReg,          // Memory to register control signal, to wb-stage, write-source select
+    output reg RegWrite           // Register write control signal, to wb-stage, write-enable
 );
 
     // Control signal logic based on opcode
     always @(*) begin
+        // 默认情况下将所有控制信号设为 0，以避免锁存器
+        RegWrite = 0;
+        MemRead = 0;
+        MemWrite = 0;
+        Branch = 0;
+        Jump = 0;
+        ALUSrc = 0;
+        ALUOp = 2'b00;
+        MemtoReg = 0;
+
         case (opcode)
             7'b0110111: begin // LUI
                 ALUOp = 2'b00;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
                 ALUSrc = 1;
                 RegWrite = 1;
-                Branch = 0;
-                Jump = 0;
             end
             7'b0010111: begin // AUIPC
                 ALUOp = 2'b00;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
                 ALUSrc = 1;
                 RegWrite = 1;
-                Branch = 0;
-                Jump = 0;
             end
             7'b1101111: begin // JAL
                 ALUOp = 2'b00;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
-                ALUSrc = 1; // 设置 ALUSrc 为 1
+                ALUSrc = 1;
                 RegWrite = 1;
-                Branch = 0;
                 Jump = 1;
             end
             7'b1100111: begin // JALR
                 ALUOp = 2'b00;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
                 ALUSrc = 1;
                 RegWrite = 1;
-                Branch = 0;
                 Jump = 1;
             end
             7'b1100011: begin // Branch
                 ALUOp = 2'b01;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
-                ALUSrc = 0;
-                RegWrite = 0;
                 Branch = 1;
-                Jump = 0;
             end
             7'b0000011: begin // Load
                 ALUOp = 2'b00;
+                ALUSrc = 1;
                 MemRead = 1;
                 MemtoReg = 1;
-                MemWrite = 0;
-                ALUSrc = 1;
                 RegWrite = 1;
-                Branch = 0;
-                Jump = 0;
             end
             7'b0100011: begin // Store
                 ALUOp = 2'b00;
-                MemRead = 0;
-                MemtoReg = 0;
+                ALUSrc = 1;
                 MemWrite = 1;
-                ALUSrc = 1;
-                RegWrite = 0;
-                Branch = 0;
-                Jump = 0;
             end
-            7'b0010011: begin // Immediate
-                ALUOp = 2'b10;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
+            7'b0010011: begin // I-type
+                ALUOp = 2'b11;
                 ALUSrc = 1;
                 RegWrite = 1;
-                Branch = 0;
-                Jump = 0;
             end
-            7'b0110011: begin // Register
+            7'b0110011: begin // R-type
                 ALUOp = 2'b10;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
-                ALUSrc = 0;
                 RegWrite = 1;
-                Branch = 0;
-                Jump = 0;
             end
             7'b0001111: begin // FENCE
-                ALUOp = 2'b00;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
-                ALUSrc = 0;
-                RegWrite = 0;
-                Branch = 0;
-                Jump = 0;
+                // No control signals needed for FENCE
             end
             7'b1110011: begin // SYSTEM
-                ALUOp = 2'b00;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
-                ALUSrc = 0;
-                RegWrite = 0;
-                Branch = 0;
-                Jump = 0;
+                // No control signals needed for SYSTEM instructions
             end
-            default: begin // Default case to handle undefined opcodes
-                ALUOp = 2'b00;
-                MemRead = 0;
-                MemtoReg = 0;
-                MemWrite = 0;
-                ALUSrc = 0;
-                RegWrite = 0;
-                Branch = 0;
-                Jump = 0;
+            default: begin
+                // 默认情况下所有控制信号已经设为 0
             end
         endcase
-    end
-
-    // Reset logic to initialize control signals
-    always @(posedge clk or negedge reset_n) begin
-        if (~reset_n) begin
-            ALUOp <= 2'b00;
-            MemRead <= 0;
-            MemtoReg <= 0;
-            MemWrite <= 0;
-            ALUSrc <= 0;
-            RegWrite <= 0;
-        end
     end
 
 endmodule

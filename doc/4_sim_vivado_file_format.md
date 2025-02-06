@@ -91,7 +91,7 @@ endmodule
 
 用getc 的确读取到了内容，但是由于我的目标 memory 是按照word申明的，所以不大适合，需要修改：
 
-方法1: 通过byte 拼接为 word
+方法1: (用脚本)将 byte 拼接为 word
 方法2：用 fread命令读取word
 
 
@@ -132,4 +132,8 @@ endmodule
 
 # 总结
 尽管直接使用纯二进制文件不适合 readmemb，但你可以将二进制文件转换为文本格式（如十六进制），然后使用 readmemh 加载，或者直接在 Verilog 中读取二进制文件。这两种方法都可以用于初始化仿真阶段的 ROM 数据。
+
+
+再加上 fread(memory, file)
+可以将 file 读取到 memory 中去，适合内存是word格式的。
 

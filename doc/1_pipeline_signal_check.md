@@ -1,5 +1,8 @@
 
 # 1. list of pipeline signals 
+<link rel="stylesheet" href="css/table_style.css">
+<table id="pipeline-signal-table">
+
 |index|name|if|id|ex|mem|wb|usage|
 |-|----|----|----|----|----|----|--|
 |1|PC|S|T|T|M|T||
