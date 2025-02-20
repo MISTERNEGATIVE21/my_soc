@@ -34,36 +34,61 @@ module ALU (
     input wire reset_n,       // Active-low reset signal
     input [31:0] A,           // First operand
     input [31:0] B,           // Second operand
-    input [3:0] ALUControl,   // Control signal indicating the operation to perform
+    input [4:0] ALUControl,   // Control signal indicating the operation to perform
     output reg [31:0] Result, // Result of the operation
-    output Zero               // Zero flag, indicates if the result is zero
+    output reg Zero,          // Zero flag, indicates if the result is zero
+    output reg Negative,      // Negative flag, indicates if the result is negative
+    output reg Carry,         // Carry flag, indicates if there is a carry out
+    output reg Overflow       // Overflow flag, indicates if there is an overflow
 );
 
-    // ALU operation logic
     always @(*) begin
+        // 初始化标志位
+        Zero = 1'b0;
+        Negative = 1'b0;
+        Carry = 1'b0;
+        Overflow = 1'b0;
+
         case (ALUControl)
-            4'b0010: Result = A + B;          // ADD
-            4'b0110: Result = A - B;          // SUB
-            4'b0000: Result = A & B;          // AND
-            4'b0001: Result = A | B;          // OR
-            4'b0011: Result = A ^ B;          // XOR
-            4'b0100: Result = A << B[4:0];    // SLL (Shift Left Logical)
-            4'b0101: Result = A >> B[4:0];    // SRL (Shift Right Logical)
-            4'b0111: Result = A >>> B[4:0];   // SRA (Shift Right Arithmetic)
-            4'b1000: Result = ($signed(A) < $signed(B)) ? 32'b1 : 32'b0; // SLT (Set Less Than)
-            4'b1001: Result = (A < B) ? 32'b1 : 32'b0; // SLTU (Set Less Than Unsigned)
-            4'b1010: Result = B;              // LUI (直接输出 B)
+            5'b00010: Result = A + B;          // ADD
+            5'b00110: Result = A - B;          // SUB
+            5'b00000: Result = A & B;          // AND
+            5'b00001: Result = A | B;          // OR
+            5'b00011: Result = A ^ B;          // XOR
+            5'b00100: Result = A << B[4:0];    // SLL (Shift Left Logical)
+            5'b00101: Result = A >> B[4:0];    // SRL (Shift Right Logical)
+            5'b00111: Result = A >>> B[4:0];   // SRA (Shift Right Arithmetic)
+            5'b01000: Result = ($signed(A) < $signed(B)) ? 32'b1 : 32'b0; // SLT (Set Less Than)
+            5'b01001: Result = (A < B) ? 32'b1 : 32'b0; // SLTU (Set Less Than Unsigned)
+            5'b01010: Result = B;              // LUI (直接输出 B)
             default: Result = 32'b0;          // Default case
         endcase
-    end
 
-    // Zero flag is high if the result is zero
-    assign Zero = (Result == 0) ? 1'b1 : 1'b0;
+        // 设置标志位
+        Zero = (Result == 32'b0);
+        Negative = Result[31];
+        Carry = (ALUControl == 5'b00010) && (A + B > 32'hFFFFFFFF);
+        Overflow = (ALUControl == 5'b00010) && ((A[31] == B[31]) && (Result[31] != A[31]));
+
+        // 单独处理 Overflow 标志位
+        if (ALUControl == 5'b00010) begin
+            Overflow = ((A[31] == B[31]) && (Result[31] != A[31])); // ADD 溢出
+        end else if (ALUControl == 5'b00110) begin
+            Overflow = ((A[31] != B[31]) && (Result[31] != A[31])); // SUB 溢出
+        end else begin
+            Overflow = 1'b0;
+        end
+
+    end
 
     // Reset logic to initialize Result and Zero
     always @(posedge clk or negedge reset_n) begin
         if (~reset_n) begin
             Result <= 32'b0;
+            Zero <= 1'b0;
+            Negative <= 1'b0;
+            Carry <= 1'b0;
+            Overflow <= 1'b0;
         end
     end
 

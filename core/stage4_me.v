@@ -54,6 +54,10 @@ module MEM_stage (
         .rdata(d_memory_rdata)
     );
 
+    always @(*) begin
+        MEM_WB_ReadData <= EX_MEM_MemRead ? d_memory_rdata : 32'b0;
+    end
+
     always @(posedge clk or negedge reset_n) begin
         if (~reset_n) begin
             // 复位逻辑
@@ -86,7 +90,6 @@ module MEM_stage (
             // Normal case
             d_memory_mem_read <= EX_MEM_MemRead;
             d_memory_mem_write <= EX_MEM_MemWrite;
-            MEM_WB_ReadData <= EX_MEM_MemRead ? d_memory_rdata : 32'b0;
             MEM_WB_ALUResult <= EX_MEM_ALUResult;
             MEM_WB_PC <= EX_MEM_PC;
             MEM_WB_Rd <= EX_MEM_Rd;

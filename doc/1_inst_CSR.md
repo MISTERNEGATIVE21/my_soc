@@ -6,42 +6,43 @@
 以下是 RV32I 中常见的 CSR 指令及其功能介绍：
 
 ## 1.1. CSR 指令概述
-CSRRW (Atomic Read/Write CSR)
-
+### CSRRW (Atomic Read/Write CSR)
 格式：csrrw rd, csr, rs1
 功能：将寄存器 rs1 的值写入 CSR 寄存器 csr，并将原来的 CSR 寄存器值写入目标寄存器 rd。
 示例：
 Assembly
 csrrw x5, 0x300, x1  // 将 x1 的值写入 CSR 0x300（mstatus），并将原来的 mstatus 值写入 x5
-CSRRS (Atomic Read and Set Bits in CSR)
 
+### CSRRS (Atomic Read and Set Bits in CSR)
 格式：csrrs rd, csr, rs1
 功能：将寄存器 rs1 的值与 CSR 寄存器 csr 的值按位 OR，并将结果写入 csr。同时，将原来的 CSR 寄存器值写入目标寄存器 rd。
 示例：
 Assembly
 csr rs x5, 0x300, x1  // 将 x1 的值与 CSR 0x300（mstatus）按位 OR，并将结果写入 mstatus，同时将原来的 mstatus 值写入 x5
-CSRRC (Atomic Read and Clear Bits in CSR)
 
+### CSRRC (Atomic Read and Clear Bits in CSR)
 格式：csrrc rd, csr, rs1
 功能：将 CSR 寄存器 csr 的值与 rs1 的按位 NOT 值按位 AND，并将结果写入 csr。同时，将原来的 CSR 寄存器值写入目标寄存器 rd。
 示例：
 Assembly
 csrrc x5, 0x300, x1  // 将 CSR 0x300（mstatus）的值与 x1 的按位 NOT 值按位 AND，并将结果写入 mstatus，同时将原来的 mstatus 值写入 x5
-CSRRWI (Atomic Read/Write CSR Immediate)
 
+### CSRRWI (Atomic Read/Write CSR Immediate)
 格式：csrrwi rd, csr, imm
 功能：将立即数 imm 写入 CSR 寄存器 csr，并将原来的 CSR 寄存器值写入目标寄存器 rd。
 示例：
 Assembly
 csrrwi x5, 0x300, 1  // 将立即数 1 写入 CSR 0x300（mstatus），并将原来的 mstatus 值写入 x5
-CSRRSI (Atomic Read and Set Bits in CSR Immediate)
+
+### CSRRSI (Atomic Read and Set Bits in CSR Immediate)
 
 格式：csrrsi rd, csr, imm
 功能：将立即数 imm 与 CSR 寄存器 csr 的值按位 OR，并将结果写入 csr。同时，将原来的 CSR 寄存器值写入目标寄存器 rd。
 示例：
 Assembly
 csrrsi x5, 0x300, 1  // 将立即数 1 与 CSR 0x300（mstatus）按位 OR，并将结果写入 mstatus，同时将原来的 mstatus 值写入 x5
-CSRRCI (Atomic Read and Clear Bits in CSR Immediate)
+
+### CSRRCI (Atomic Read and Clear Bits in CSR Immediate)
 
 格式：csrrci rd, csr, imm
 功能：将 CSR 寄存器 csr 的值与立即数 imm 的按位 NOT 值按位 AND，并将结果写入 csr。同时，将原来的 CSR 寄存器值写入目标寄存器 rd。

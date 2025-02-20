@@ -34,7 +34,8 @@ module ALUControlUnit (
     input [1:0] ALUOp,        // ALU operation code
     input [6:0] Funct7,       // Function code 7 bits
     input [2:0] Funct3,       // Function code 3 bits
-    output reg [3:0] ALUControl // ALU control signal
+    input [6:0] opcode,       // Opcode to distinguish CSR instructions
+    output reg [4:0] ALUControl // ALU control signal
 );
 
     // ALU control logic
@@ -45,50 +46,69 @@ module ALUControlUnit (
             end
             2'b01: begin // Branch instructions
                 case (Funct3)
-                    3'b000: ALUControl = 4'b0110; // BEQ (Subtract)
-                    3'b001: ALUControl = 4'b0110; // BNE (Subtract)
-                    3'b100: ALUControl = 4'b0111; // BLT (Set Less Than)
-                    3'b101: ALUControl = 4'b0111; // BGE (Set Less Than)
-                    3'b110: ALUControl = 4'b0111; // BLTU (Set Less Than Unsigned)
-                    3'b111: ALUControl = 4'b0111; // BGEU (Set Less Than Unsigned)
-                    default: ALUControl = 4'b0000; // Default case
+                    3'b000: ALUControl = 5'b00110; // BEQ (Subtract)
+                    3'b001: ALUControl = 5'b00110; // BNE (Subtract)
+                    3'b100: ALUControl = 5'b00111; // BLT (Set Less Than)
+                    3'b101: ALUControl = 5'b00111; // BGE (Set Less Than)
+                    3'b110: ALUControl = 5'b00111; // BLTU (Set Less Than Unsigned)
+                    3'b111: ALUControl = 5'b00111; // BGEU (Set Less Than Unsigned)
+                    default: ALUControl = 5'b00000; // Default case
                 endcase
             end
             2'b10: begin // R-type instructions
                 case ({Funct7, Funct3})
-                    10'b0000000_000: ALUControl = 4'b0010; // ADD
-                    10'b0100000_000: ALUControl = 4'b0110; // SUB
-                    10'b0000000_111: ALUControl = 4'b0000; // AND
-                    10'b0000000_110: ALUControl = 4'b0001; // OR
-                    10'b0000000_100: ALUControl = 4'b0011; // XOR
-                    10'b0000000_001: ALUControl = 4'b0100; // SLL (Shift Left Logical)
-                    10'b0000000_101: ALUControl = 4'b0101; // SRL (Shift Right Logical)
-                    10'b0100000_101: ALUControl = 4'b0111; // SRA (Shift Right Arithmetic)
-                    10'b0000000_010: ALUControl = 4'b1000; // SLT (Set Less Than)
-                    10'b0000000_011: ALUControl = 4'b1001; // SLTU (Set Less Than Unsigned)
+                    10'b0000000_000: ALUControl = 5'b00010; // ADD
+                    10'b0100000_000: ALUControl = 5'b00110; // SUB
+                    10'b0000000_111: ALUControl = 5'b00000; // AND
+                    10'b0000000_110: ALUControl = 5'b00001; // OR
+                    10'b0000000_100: ALUControl = 5'b00011; // XOR
+                    10'b0000000_001: ALUControl = 5'b00100; // SLL (Shift Left Logical)
+                    10'b0000000_101: ALUControl = 5'b00101; // SRL (Shift Right Logical)
+                    10'b0100000_101: ALUControl = 5'b00111; // SRA (Shift Right Arithmetic)
+                    10'b0000000_010: ALUControl = 5'b01000; // SLT (Set Less Than)
+                    10'b0000000_011: ALUControl = 5'b01001; // SLTU (Set Less Than Unsigned)
                     default: ALUControl = 4'b0000; // Default case
                 endcase
             end
             2'b11: begin // I-type instructions
                 case (Funct3)
-                    3'b000: ALUControl = 4'b0010; // ADDI
-                    3'b010: ALUControl = 4'b1000; // SLTI (Set Less Than Immediate)
-                    3'b011: ALUControl = 4'b1001; // SLTIU (Set Less Than Immediate Unsigned)
-                    3'b100: ALUControl = 4'b0011; // XORI
-                    3'b110: ALUControl = 4'b0001; // ORI
-                    3'b111: ALUControl = 4'b0000; // ANDI
-                    3'b001: ALUControl = 4'b0100; // SLLI (Shift Left Logical Immediate)
+                    3'b000: ALUControl = 5'b00010; // ADDI
+                    3'b010: ALUControl = 5'b01000; // SLTI (Set Less Than Immediate)
+                    3'b011: ALUControl = 5'b01001; // SLTIU (Set Less Than Immediate Unsigned)
+                    3'b100: ALUControl = 5'b00011; // XORI
+                    3'b110: ALUControl = 5'b00001; // ORI
+                    3'b111: ALUControl = 5'b00000; // ANDI
+                    3'b001: ALUControl = 5'b00100; // SLLI (Shift Left Logical Immediate)
                     3'b101: begin
                         case (Funct7)
-                            7'b0000000: ALUControl = 4'b0101; // SRLI (Shift Right Logical Immediate)
-                            7'b0100000: ALUControl = 4'b0111; // SRAI (Shift Right Arithmetic Immediate)
-                            default: ALUControl = 4'b0000; // Default case
+                            7'b0000000: ALUControl = 5'b00101; // SRLI (Shift Right Logical Immediate)
+                            7'b0100000: ALUControl = 5'b00111; // SRAI (Shift Right Arithmetic Immediate)
+                            default: ALUControl = 5'b00000; // Default case
                         endcase
                     end
-                    default: ALUControl = 4'b0000; // Default case
+
+                    default: begin
+                        if (opcode == 7'b0110111) begin // LUI and AUIPC
+                            ALUControl = 5'b1010; // LUI
+                        end else if (opcode == 7'b1110011) begin //Csr instructions
+                            case (Funct3)
+                                3'b001: ALUControl = 5'b10010; // CSRRW
+                                3'b010: ALUControl = 5'b10001; // CSRRS
+                                3'b011: ALUControl = 5'b10000; // CSRRC
+                                3'b101: ALUControl = 5'b11010; // CSRRWI
+                                3'b110: ALUControl = 5'b11001; // CSRRSI
+                                3'b111: ALUControl = 5'b11000; // CSRRCI
+                                default: ALUControl = 5'b00000; // Default case
+                            endcase
+                        
+                        end else begin
+                                ALUControl = 5'b00000; // Default case
+                        end
+                    end
+                    
                 endcase
             end
-            default: ALUControl = 4'b0000; // Default case
+            default: ALUControl = 5'b00000; // Default case
         endcase
     end
 
